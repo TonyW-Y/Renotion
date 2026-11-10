@@ -90,7 +90,7 @@ export default function LandingPage() {
           </div>
         </nav>
 
-        <main className="mx-auto grid max-w-6xl items-center gap-14 px-5 pt-14 pb-20 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:pt-24">
+        <main className="mx-auto grid max-w-6xl items-center gap-14 px-5 pt-14 pb-20 sm:px-8 lg:grid-cols-[1.2fr_1fr] lg:pt-24">
           <motion.div variants={container} initial="hidden" animate="show">
             <motion.div
               variants={item}
@@ -104,7 +104,7 @@ export default function LandingPage() {
 
             <motion.h1
               variants={item}
-              className="mt-6 text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.045em] text-balance text-fg sm:text-6xl lg:text-[4.25rem]"
+              className="mt-6 text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.045em] text-fg sm:text-6xl lg:text-[3.6rem] xl:text-[4rem]"
             >
               Plan your renovation
               <br />
