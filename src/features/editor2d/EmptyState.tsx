@@ -56,7 +56,7 @@ export function EmptyState() {
               >
                 <BrickWall className="size-4" />
                 Draw walls
-                <Kbd className="border-white/25 bg-white/15 text-white shadow-none">W</Kbd>
+                <Kbd className="border-white/30 bg-black/15 text-[11px] font-semibold text-white shadow-none">W</Kbd>
               </Button>
             </>
           )}
