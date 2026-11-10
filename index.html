@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0c0f" />
+    <meta
+      name="description"
+      content="Renotion — draw your floor plan in 2D, see it in 3D instantly, and plan your renovation with automatic estimates."
+    />
+    <title>Renotion — Plan your renovation in 3D</title>
+    <script>
+      try {
+        var s = JSON.parse(localStorage.getItem('renotion:ui') || 'null');
+        var t = s && s.state && s.state.theme;
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        else if (window.matchMedia('(prefers-color-scheme: light)').matches)
+          document.documentElement.dataset.theme = 'light';
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
