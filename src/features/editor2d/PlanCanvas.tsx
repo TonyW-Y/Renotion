@@ -66,13 +66,6 @@ export function PlanCanvas() {
       {/* Vignette */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,var(--canvas)_100%)] opacity-80" />
 
-      {/* Origin marker */}
-      <div className="pointer-events-none absolute top-1/2 left-1/2" aria-hidden="true">
-        <div className="absolute -left-2 h-px w-4 bg-accent/70" />
-        <div className="absolute -top-2 h-4 w-px bg-accent/70" />
-        <span className="absolute top-1.5 left-1.5 font-mono text-[9px] text-fg-subtle">0,0</span>
-      </div>
-
       <EmptyState />
 
       <div className="pointer-events-none absolute bottom-4 left-4 sm:left-20">
