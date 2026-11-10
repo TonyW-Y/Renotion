@@ -37,6 +37,10 @@ export interface Opening {
   height: number;
   /** 0 for doors. */
   sillHeight: number;
+  /** Doors: which end of the opening the hinge is on. Default 'start'. */
+  hinge?: 'start' | 'end';
+  /** Doors: which side of the wall the leaf swings into. Default 'a' (left). */
+  swing?: 'a' | 'b';
 }
 
 /** Rooms are derived from walls; this stores user data keyed by a stable room key. */
@@ -84,6 +88,9 @@ export interface Material {
 
 export const DEFAULT_WALL_THICKNESS = 0.15;
 export const DEFAULT_WALL_HEIGHT = 2.44;
+
+export const DEFAULT_DOOR = { width: 0.9, height: 2.03, sillHeight: 0 } as const;
+export const DEFAULT_WINDOW = { width: 1.2, height: 1.2, sillHeight: 0.9 } as const;
 
 export function createEmptyPlan(units: Plan['units'] = 'metric'): Plan {
   return { version: 1, units, walls: [], openings: [], rooms: [], furniture: [] };
