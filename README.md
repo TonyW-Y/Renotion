@@ -39,24 +39,24 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Typecheck and build for production |
-| `npm run preview` | Serve the production build |
-| `npm run lint` | ESLint (zero warnings allowed) |
-| `npm run typecheck` | `tsc` in strict mode |
-| `npm test` | Vitest unit and component tests |
-| `npm run test:e2e` | Playwright end-to-end tests |
-| `npm run format` | Prettier |
+| Script              | What it does                       |
+| ------------------- | ---------------------------------- |
+| `npm run dev`       | Start the Vite dev server          |
+| `npm run build`     | Typecheck and build for production |
+| `npm run preview`   | Serve the production build         |
+| `npm run lint`      | ESLint (zero warnings allowed)     |
+| `npm run typecheck` | `tsc` in strict mode               |
+| `npm test`          | Vitest unit and component tests    |
+| `npm run test:e2e`  | Playwright end-to-end tests        |
+| `npm run format`    | Prettier                           |
 
 ## Keyboard shortcuts
 
-| Key | Action |
-| --- | --- |
+| Key                         | Action                                 |
+| --------------------------- | -------------------------------------- |
 | `V` / `W` / `D` / `N` / `X` | Select / Wall / Door / Window / Delete |
-| `1` / `2` / `3` | 2D / Split / 3D view |
-| `Esc` | Back to Select |
+| `1` / `2` / `3`             | 2D / Split / 3D view                   |
+| `Esc`                       | Back to Select                         |
 
 ## Credits
 
