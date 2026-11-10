@@ -1,0 +1,73 @@
+import { AnimatePresence, motion } from 'motion/react';
+import { MousePointerClick, X } from 'lucide-react';
+import { IconButton, PanelSection, PropRow } from '@/components/ui';
+import { createEmptyPlan, DEFAULT_WALL_HEIGHT, DEFAULT_WALL_THICKNESS } from '@/core/types';
+import { formatArea, formatLength } from '@/core/units';
+import { useUiStore } from '@/state/uiStore';
+
+const GRID_SNAP = 0.1;
+// Placeholder until the plan store lands in Phase 1.
+const plan = createEmptyPlan();
+
+export function PropertiesPanel() {
+  const open = useUiStore((s) => s.rightPanelOpen);
+  const setOpen = useUiStore((s) => s.setRightPanelOpen);
+  const units = useUiStore((s) => s.units);
+
+  return (
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.aside
+          key="props"
+          aria-label="Properties"
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 24 }}
+          transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+          className="absolute inset-y-0 right-0 z-20 flex w-72 shrink-0 flex-col border-l border-border bg-surface/95 shadow-float backdrop-blur-xl lg:relative lg:bg-surface lg:shadow-none"
+        >
+          <header className="flex h-12 shrink-0 items-center justify-between border-b border-border pr-2 pl-4">
+            <h2 className="text-[13px] font-semibold text-fg">Properties</h2>
+            <IconButton
+              size="sm"
+              label="Close properties"
+              onClick={() => {
+                setOpen(false);
+              }}
+              className="lg:hidden"
+            >
+              <X className="size-3.5" />
+            </IconButton>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <PanelSection title="Selection">
+              <div className="flex flex-col items-center rounded-xl border border-dashed border-border-strong px-4 py-6 text-center">
+                <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-fg/[0.05]">
+                  <MousePointerClick className="size-4 text-fg-subtle" />
+                </div>
+                <p className="text-[13px] font-medium text-fg">Nothing selected</p>
+                <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+                  Click a wall, opening or room to edit its dimensions and finishes.
+                </p>
+              </div>
+            </PanelSection>
+
+            <PanelSection title="Plan">
+              <PropRow label="Walls" value={plan.walls.length} />
+              <PropRow label="Openings" value={plan.openings.length} />
+              <PropRow label="Rooms" value={plan.rooms.length} />
+              <PropRow label="Floor area" value={formatArea(0, units)} />
+            </PanelSection>
+
+            <PanelSection title="Defaults">
+              <PropRow label="Wall thickness" value={formatLength(DEFAULT_WALL_THICKNESS, units)} />
+              <PropRow label="Wall height" value={formatLength(DEFAULT_WALL_HEIGHT, units)} />
+              <PropRow label="Grid snap" value={formatLength(GRID_SNAP, units, { fraction: 16 })} />
+            </PanelSection>
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  );
+}
