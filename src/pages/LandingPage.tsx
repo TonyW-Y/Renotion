@@ -104,9 +104,9 @@ export default function LandingPage() {
 
             <motion.h1
               variants={item}
-              className="mt-6 text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.045em] text-fg sm:text-6xl lg:text-[3.6rem] xl:text-[4rem]"
+              className="mt-6 text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.045em] text-fg sm:text-6xl lg:text-[3.15rem] xl:text-[3.5rem]"
             >
-              Plan your renovation
+              <span className="lg:whitespace-nowrap">Plan your renovation</span>
               <br />
               <span className="text-gradient">before the first nail.</span>
             </motion.h1>
