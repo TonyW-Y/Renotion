@@ -21,7 +21,7 @@ export function EditorShell() {
       <div className="relative flex min-h-0 flex-1">
         <main className="relative min-w-0 flex-1">
           <Workspace />
-          <div className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center">
+          <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center sm:inset-x-auto sm:inset-y-0 sm:bottom-auto sm:left-3 sm:items-center">
             <ToolRail />
           </div>
         </main>

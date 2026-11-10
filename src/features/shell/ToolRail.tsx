@@ -11,14 +11,14 @@ export function ToolRail() {
   return (
     <nav
       aria-label="Tools"
-      className="pointer-events-auto flex flex-col gap-1 rounded-2xl bg-surface/85 p-1.5 shadow-float backdrop-blur-xl"
+      className="pointer-events-auto flex flex-row gap-1 rounded-2xl sm:flex-col bg-surface/85 p-1.5 shadow-float backdrop-blur-xl"
     >
       {TOOLS.map((t, i) => {
         const active = t.id === tool;
         const Icon = t.icon;
         return (
           <div key={t.id} className="contents">
-            {i === TOOLS.length - 1 && <div className="mx-2 my-0.5 h-px bg-border" />}
+            {i === TOOLS.length - 1 && <div className="mx-0.5 my-2 w-px bg-border sm:mx-2 sm:my-0.5 sm:h-px sm:w-auto" />}
             <Tooltip content={t.label} shortcut={t.shortcut} side="right">
               <button
                 type="button"

@@ -9,7 +9,7 @@ export function EmptyState() {
   const drawing = tool === 'wall';
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 pb-24 sm:px-24 sm:pb-6">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={drawing ? 'drawing' : 'idle'}
