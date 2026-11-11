@@ -192,6 +192,8 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
   for (const o of baseline.openings) {
     const now = nextOpenings.get(o.id);
     if (now && !changed(o, now)) continue;
+    // Openings that disappear with their wall are covered by the wall's removal.
+    if (!now && !nextWalls.has(o.wallId)) continue;
     events.push({
       type: 'openingRemoved',
       openingId: o.id,

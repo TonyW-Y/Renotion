@@ -114,6 +114,23 @@ describe('diffPlans', () => {
     expect(diffPlans(base, removed).map((e) => e.type)).toEqual(['wallRemoved']);
   });
 
+  it('does not report openings removed together with their wall', () => {
+    const base = run(
+      room(),
+      addOpening({
+        id: 'd',
+        wallId: 'w0',
+        type: 'door',
+        offset: 2,
+        width: 0.9,
+        height: 2.03,
+        sillHeight: 0,
+      }),
+    );
+    const planned = run(base, deleteWall(base, 'w0'));
+    expect(diffPlans(base, planned).map((e) => e.type)).toEqual(['wallRemoved']);
+  });
+
   it('treats a moved wall as removed + added', () => {
     const base = room();
     const moved: Plan = {
