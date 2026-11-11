@@ -94,9 +94,14 @@ export function FurnitureShapes({
   hover,
   danger = false,
 }: FurnitureShapesProps) {
+  // Low pieces (rugs) first so taller furniture sits on top of them in plan view.
+  const ordered = [...items].sort(
+    (a, b) =>
+      (FURNITURE_BY_ID.get(a.modelId)?.height ?? 0) - (FURNITURE_BY_ID.get(b.modelId)?.height ?? 0),
+  );
   return (
     <>
-      {items.map((item) => {
+      {ordered.map((item) => {
         const selected = selection?.kind === 'furniture' && selection.id === item.id;
         const hovered = hover?.kind === 'furniture' && hover.id === item.id;
         const outline = selected
