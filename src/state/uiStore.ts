@@ -6,7 +6,13 @@ import type { UnitSystem } from '@/core/units';
 export type Tool = 'select' | 'wall' | 'door' | 'window' | 'delete';
 export type ViewMode = '2d' | 'split' | '3d';
 export type Theme = 'dark' | 'light';
-export type PlanKind = 'baseline' | 'planned';
+export type SelectionKind = 'wall' | 'opening' | 'room' | 'furniture';
+
+export interface Selection {
+  kind: SelectionKind;
+  /** Element id, or room key for rooms. */
+  id: string;
+}
 
 export const ZOOM_MIN = 0.25;
 export const ZOOM_MAX = 4;
@@ -26,11 +32,12 @@ export interface UiState {
   units: UnitSystem;
   rightPanelOpen: boolean;
   zoom: number;
+  /** Screen offset (px) of the plan origin from the canvas centre. */
+  pan: Vec2;
   /** Cursor position in plan space (metres), or null when outside the canvas. */
   cursor: Vec2 | null;
-  planKind: PlanKind;
-  /** Temporary home until the project store lands (Phase 1/6). */
-  projectName: string;
+  selection: Selection | null;
+  hover: Selection | null;
 
   setTool: (tool: Tool) => void;
   setViewMode: (mode: ViewMode) => void;
@@ -41,9 +48,14 @@ export interface UiState {
   setRightPanelOpen: (open: boolean) => void;
   setZoom: (zoom: number) => void;
   zoomBy: (factor: number) => void;
+  /** Zooms keeping the screen point `at` (px from canvas centre) fixed. */
+  zoomAt: (factor: number, at: Vec2) => void;
+  setPan: (pan: Vec2) => void;
+  panBy: (dx: number, dy: number) => void;
+  resetView: () => void;
   setCursor: (cursor: Vec2 | null) => void;
-  setPlanKind: (kind: PlanKind) => void;
-  setProjectName: (name: string) => void;
+  select: (selection: Selection | null) => void;
+  setHover: (hover: Selection | null) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -55,12 +67,13 @@ export const useUiStore = create<UiState>()(
       units: 'metric',
       rightPanelOpen: true,
       zoom: 1,
+      pan: { x: 0, y: 0 },
       cursor: null,
-      planKind: 'baseline',
-      projectName: 'Untitled project',
+      selection: null,
+      hover: null,
 
       setTool: (tool) => {
-        set({ tool });
+        set((s) => ({ tool, selection: tool === 'select' ? s.selection : null }));
       },
       setViewMode: (viewMode) => {
         set({ viewMode });
@@ -86,14 +99,30 @@ export const useUiStore = create<UiState>()(
       zoomBy: (factor) => {
         set((s) => ({ zoom: clampZoom(s.zoom * factor) }));
       },
+      zoomAt: (factor, at) => {
+        set((s) => {
+          const zoom = clampZoom(s.zoom * factor);
+          const k = zoom / s.zoom;
+          return { zoom, pan: { x: at.x - (at.x - s.pan.x) * k, y: at.y - (at.y - s.pan.y) * k } };
+        });
+      },
+      setPan: (pan) => {
+        set({ pan });
+      },
+      panBy: (dx, dy) => {
+        set((s) => ({ pan: { x: s.pan.x + dx, y: s.pan.y + dy } }));
+      },
+      resetView: () => {
+        set({ zoom: 1, pan: { x: 0, y: 0 } });
+      },
       setCursor: (cursor) => {
         set({ cursor });
       },
-      setPlanKind: (planKind) => {
-        set({ planKind });
+      select: (selection) => {
+        set({ selection });
       },
-      setProjectName: (projectName) => {
-        set({ projectName });
+      setHover: (hover) => {
+        set({ hover });
       },
     }),
     {
@@ -104,7 +133,6 @@ export const useUiStore = create<UiState>()(
         units: s.units,
         viewMode: s.viewMode,
         rightPanelOpen: s.rightPanelOpen,
-        projectName: s.projectName,
       }),
     },
   ),

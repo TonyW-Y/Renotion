@@ -35,6 +35,20 @@ describe('uiStore', () => {
     expect(useUiStore.getState().zoom).toBe(ZOOM_MIN);
   });
 
+  it('zooms around a screen point', () => {
+    // Zoom 2× around (100, 0): the point under the cursor must stay put.
+    useUiStore.getState().zoomAt(2, { x: 100, y: 0 });
+    const { zoom, pan } = useUiStore.getState();
+    expect(zoom).toBe(2);
+    expect(pan).toEqual({ x: -100, y: 0 });
+  });
+
+  it('clears the selection when leaving the select tool', () => {
+    useUiStore.getState().select({ kind: 'wall', id: 'w1' });
+    useUiStore.getState().setTool('wall');
+    expect(useUiStore.getState().selection).toBeNull();
+  });
+
   it('toggles the properties panel', () => {
     const open = useUiStore.getState().rightPanelOpen;
     useUiStore.getState().toggleRightPanel();

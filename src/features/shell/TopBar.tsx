@@ -3,7 +3,10 @@ import { Link } from 'react-router';
 import { LogoMark } from '@/components/brand/Logo';
 import { IconButton, SegmentedControl, Tooltip, type SegmentOption } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import { useUiStore, type PlanKind, type ViewMode } from '@/state/uiStore';
+import { usePlanStore } from '@/state/planStore';
+import { useUiStore, type ViewMode } from '@/state/uiStore';
+import { PlanVersionSwitch } from './PlanVersionSwitch';
+import { UndoRedo } from './UndoRedo';
 import type { UnitSystem } from '@/core/units';
 
 const VIEW_OPTIONS: readonly SegmentOption<ViewMode>[] = [
@@ -45,16 +48,6 @@ const VIEW_OPTIONS: readonly SegmentOption<ViewMode>[] = [
   },
 ];
 
-const PLAN_OPTIONS: readonly SegmentOption<PlanKind>[] = [
-  { value: 'baseline', label: 'Current home' },
-  {
-    value: 'planned',
-    label: 'Renovation',
-    disabled: true,
-    tooltip: 'Draw your current home first, then start planning',
-  },
-];
-
 const UNIT_OPTIONS: readonly SegmentOption<UnitSystem>[] = [
   { value: 'metric', label: 'm', ariaLabel: 'Metric units' },
   { value: 'imperial', label: 'ft', ariaLabel: 'Imperial units' },
@@ -63,14 +56,12 @@ const UNIT_OPTIONS: readonly SegmentOption<UnitSystem>[] = [
 export function TopBar() {
   const viewMode = useUiStore((s) => s.viewMode);
   const setViewMode = useUiStore((s) => s.setViewMode);
-  const planKind = useUiStore((s) => s.planKind);
-  const setPlanKind = useUiStore((s) => s.setPlanKind);
   const units = useUiStore((s) => s.units);
   const setUnits = useUiStore((s) => s.setUnits);
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
-  const projectName = useUiStore((s) => s.projectName);
-  const setProjectName = useUiStore((s) => s.setProjectName);
+  const projectName = usePlanStore((s) => s.project.name);
+  const setProjectName = usePlanStore((s) => s.setProjectName);
   const rightPanelOpen = useUiStore((s) => s.rightPanelOpen);
   const toggleRightPanel = useUiStore((s) => s.toggleRightPanel);
 
@@ -100,16 +91,15 @@ export function TopBar() {
           spellCheck={false}
           className="hidden h-8 max-w-56 min-w-0 rounded-lg bg-transparent px-2 text-sm font-medium text-fg transition-colors outline-none hover:bg-fg/[0.04] focus:bg-fg/[0.06] sm:block"
         />
+        <div className="ml-1 hidden h-5 w-px bg-border md:block" />
+        <div className="hidden md:block">
+          <UndoRedo />
+        </div>
       </div>
 
       {/* Center: plan version */}
       <div className="hidden lg:block">
-        <SegmentedControl
-          ariaLabel="Plan version"
-          value={planKind}
-          onChange={setPlanKind}
-          options={PLAN_OPTIONS}
-        />
+        <PlanVersionSwitch />
       </div>
 
       {/* Right: view + preferences */}
