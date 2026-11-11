@@ -1,8 +1,18 @@
 import { formatLength } from '@/core/units';
+import { usePlanStore, type SaveStatus } from '@/state/planStore';
 import { useUiStore } from '@/state/uiStore';
+import { cn } from '@/lib/cn';
 import { TOOLS } from './tools';
 
+const SAVE_LABEL: Record<SaveStatus, string> = {
+  idle: 'Local',
+  saving: 'Saving…',
+  saved: 'Saved locally',
+  error: 'Save failed',
+};
+
 export function StatusBar() {
+  const saveStatus = usePlanStore((s) => s.saveStatus);
   const tool = useUiStore((s) => s.tool);
   const cursor = useUiStore((s) => s.cursor);
   const zoom = useUiStore((s) => s.zoom);
@@ -39,8 +49,17 @@ export function StatusBar() {
         <span>{Math.round(zoom * 100)}%</span>
         <span className="h-3 w-px bg-border" />
         <span className="flex items-center gap-1.5 font-sans">
-          <span className="size-1.5 animate-pulse-soft rounded-full bg-success" />
-          Local
+          <span
+            className={cn(
+              'size-1.5 rounded-full',
+              saveStatus === 'error'
+                ? 'bg-danger'
+                : saveStatus === 'saving'
+                  ? 'animate-pulse-soft bg-warning'
+                  : 'bg-success',
+            )}
+          />
+          <span data-testid="save-status">{SAVE_LABEL[saveStatus]}</span>
         </span>
       </div>
     </footer>

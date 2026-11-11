@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useUiStore } from '@/state/uiStore';
+import { useProjectSync } from '@/state/useProjectSync';
 import { PropertiesPanel } from './PropertiesPanel';
 import { StatusBar } from './StatusBar';
 import { ToolRail } from './ToolRail';
@@ -8,6 +9,7 @@ import { useEditorShortcuts } from './useEditorShortcuts';
 import { Workspace } from './Workspace';
 
 export function EditorShell() {
+  useProjectSync();
   useEditorShortcuts();
 
   // Start with the properties panel collapsed on small screens.
