@@ -564,9 +564,15 @@ function CeilingFinish({ room }: { room: ResolvedRoom }) {
   );
 }
 
+const SURFACE_OPTIONS: readonly SegmentOption<'floor' | 'ceiling'>[] = [
+  { value: 'floor', label: 'Floor' },
+  { value: 'ceiling', label: 'Ceiling' },
+];
+
 export function RoomInspector({ room, units }: { room: ResolvedRoom; units: UnitSystem }) {
   const execute = usePlanStore((s) => s.execute);
   const planned = usePlanStore((s) => s.activeKind === 'planned');
+  const [surface, setSurface] = useState<'floor' | 'ceiling'>('floor');
   const floor = getMaterial(room.meta?.floorMaterial);
   const meta = {
     key: room.key,
@@ -607,45 +613,56 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
         <PropRow label="Floor area" value={formatArea(room.area, units)} />
         <PropRow label="Perimeter" value={formatLength(room.perimeter, units)} />
       </PanelSection>
-      <PanelSection title={planned ? 'New floor' : 'Existing floor'} className="border-b-0 pt-0">
-        <FloorPicker
-          value={room.meta?.floorMaterial}
-          onChange={(id) => {
-            // A new floor starts in its own colour.
-            execute(setRoomMeta(room.meta, { ...meta, ...(id ? { floorMaterial: id } : {}) }));
-          }}
+      <div className="px-4 pb-1">
+        <SegmentedControl
+          ariaLabel="Room surface"
+          value={surface}
+          className="w-full [&>*]:flex-1"
+          options={SURFACE_OPTIONS}
+          onChange={setSurface}
         />
-        {floor?.textureSet && (
-          <div className="mt-3 space-y-1.5">
-            <p className="text-xs text-fg-muted">Colour</p>
-            <ColorSwatches
-              label="Floor colour"
-              value={room.meta?.floorTint}
-              original={floor.colorHex}
-              onChange={(hex) => {
-                execute(
-                  setRoomMeta(room.meta, {
-                    ...meta,
-                    ...(room.meta?.floorMaterial ? { floorMaterial: room.meta.floorMaterial } : {}),
-                    ...(hex ? { floorTint: hex } : {}),
-                  }),
-                );
-              }}
-            />
-          </div>
-        )}
-        {!planned && (
-          <p className="mt-3 text-[11px] leading-relaxed text-fg-subtle">
-            Record what’s there today. Only changes you make after “Start planning” are priced.
-          </p>
-        )}
-      </PanelSection>
-      <PanelSection
-        title={planned ? 'New ceiling' : 'Existing ceiling'}
-        className="border-b-0 pt-0"
-      >
-        <CeilingFinish key={room.key} room={room} />
-      </PanelSection>
+      </div>
+      {surface === 'floor' ? (
+        <PanelSection title={planned ? 'New floor' : 'Existing floor'} className="border-b-0">
+          <FloorPicker
+            value={room.meta?.floorMaterial}
+            onChange={(id) => {
+              // A new floor starts in its own colour.
+              execute(setRoomMeta(room.meta, { ...meta, ...(id ? { floorMaterial: id } : {}) }));
+            }}
+          />
+          {floor?.textureSet && (
+            <div className="mt-3 space-y-1.5">
+              <p className="text-xs text-fg-muted">Colour</p>
+              <ColorSwatches
+                label="Floor colour"
+                value={room.meta?.floorTint}
+                original={floor.colorHex}
+                onChange={(hex) => {
+                  execute(
+                    setRoomMeta(room.meta, {
+                      ...meta,
+                      ...(room.meta?.floorMaterial
+                        ? { floorMaterial: room.meta.floorMaterial }
+                        : {}),
+                      ...(hex ? { floorTint: hex } : {}),
+                    }),
+                  );
+                }}
+              />
+            </div>
+          )}
+          {!planned && (
+            <p className="mt-3 text-[11px] leading-relaxed text-fg-subtle">
+              Record what’s there today. Only changes you make after “Start planning” are priced.
+            </p>
+          )}
+        </PanelSection>
+      ) : (
+        <PanelSection title={planned ? 'New ceiling' : 'Existing ceiling'} className="border-b-0">
+          <CeilingFinish key={room.key} room={room} />
+        </PanelSection>
+      )}
     </>
   );
 }

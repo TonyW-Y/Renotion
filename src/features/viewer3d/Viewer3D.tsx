@@ -291,7 +291,11 @@ export default function Viewer3D() {
             options={MODE_OPTIONS}
           />
           <div className="mx-0.5 h-4 w-px bg-border" />
-          <Tooltip content={ceilings ? 'Hide ceilings' : 'Show ceilings'}>
+          <Tooltip
+            content={
+              ceilings ? 'Hide ceilings' : 'Show ceilings · choose a finish in a room’s Ceiling tab'
+            }
+          >
             <span className="inline-flex">
               <IconButton
                 size="sm"

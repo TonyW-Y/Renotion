@@ -132,6 +132,7 @@ test('dragging a door grip on the plan resizes it', async ({ page }) => {
 test('a room can get a new ceiling, which is priced and shown in 3D', async ({ page }) => {
   const { click, props } = await setup(page);
   await click(1.5, 1);
+  await props.getByRole('radio', { name: 'Ceiling', exact: true }).click();
   await props
     .getByRole('radiogroup', { name: 'Ceiling finish type' })
     .getByRole('radio', { name: 'Texture' })

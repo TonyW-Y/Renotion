@@ -6,7 +6,7 @@ export function ZoomControls({ onFit }: { onFit: () => void }) {
   const zoom = useUiStore((s) => s.zoom);
   const zoomBy = useUiStore((s) => s.zoomBy);
   const resetView = useUiStore((s) => s.resetView);
-  const showLabels = useUiStore((s) => s.showRoomLabels);
+  const showLabels = useUiStore((s) => s.alwaysShowRoomLabels);
   const toggleLabels = useUiStore((s) => s.toggleRoomLabels);
 
   return (
@@ -41,10 +41,16 @@ export function ZoomControls({ onFit }: { onFit: () => void }) {
         <Plus className="size-3.5" />
       </IconButton>
       <div className="mx-0.5 h-4 w-px bg-border" />
-      <Tooltip content={`${showLabels ? 'Hide' : 'Show'} room labels`} shortcut="L" side="top">
+      <Tooltip
+        content={
+          showLabels ? 'Room labels: always shown' : 'Room labels: on hover · click to always show'
+        }
+        shortcut="L"
+        side="top"
+      >
         <IconButton
           size="sm"
-          label={showLabels ? 'Hide room labels' : 'Show room labels'}
+          label={showLabels ? 'Show room labels on hover only' : 'Always show room labels'}
           aria-pressed={showLabels}
           className={showLabels ? 'text-accent' : undefined}
           onClick={toggleLabels}

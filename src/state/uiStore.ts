@@ -39,8 +39,8 @@ export interface UiState {
   /** 3D camera mode. */
   cameraMode: CameraMode;
   showCeilings: boolean;
-  /** Room name / area tags on the 2D plan (hover or select still shows one). */
-  showRoomLabels: boolean;
+  /** Keep every room's name / area tag on the 2D plan (otherwise only on hover / select). */
+  alwaysShowRoomLabels: boolean;
   zoom: number;
   /** Screen offset (px) of the plan origin from the canvas centre. */
   pan: Vec2;
@@ -89,7 +89,7 @@ export const useUiStore = create<UiState>()(
       rightPanelOpen: true,
       cameraMode: 'orbit',
       showCeilings: false,
-      showRoomLabels: true,
+      alwaysShowRoomLabels: false,
       zoom: 1,
       pan: { x: 0, y: 0 },
       cursor: null,
@@ -123,7 +123,7 @@ export const useUiStore = create<UiState>()(
         set({ showCeilings });
       },
       toggleRoomLabels: () => {
-        set((s) => ({ showRoomLabels: !s.showRoomLabels }));
+        set((s) => ({ alwaysShowRoomLabels: !s.alwaysShowRoomLabels }));
       },
       toggleRightPanel: () => {
         set((s) => ({ rightPanelOpen: !s.rightPanelOpen }));
@@ -177,7 +177,7 @@ export const useUiStore = create<UiState>()(
         units: s.units,
         viewMode: s.viewMode,
         rightPanelOpen: s.rightPanelOpen,
-        showRoomLabels: s.showRoomLabels,
+        alwaysShowRoomLabels: s.alwaysShowRoomLabels,
       }),
     },
   ),
