@@ -51,6 +51,13 @@ export interface RoomMeta {
   ceilingMaterial?: ID;
 }
 
+/** Real-world furniture dimensions (metres). */
+export interface FurnitureSize {
+  width: number;
+  depth: number;
+  height: number;
+}
+
 export interface FurnitureItem {
   id: ID;
   modelId: string;
@@ -58,6 +65,15 @@ export interface FurnitureItem {
   /** Radians around the vertical axis. */
   rotation: number;
   elevation?: number;
+  /** Custom size; the catalogue size when absent. */
+  size?: FurnitureSize;
+  /** Custom colours for the model's main (primary) and accent (secondary) materials. */
+  colors?: FurnitureColors;
+}
+
+export interface FurnitureColors {
+  primary?: string;
+  secondary?: string;
 }
 
 export interface Plan {

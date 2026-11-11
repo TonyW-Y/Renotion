@@ -56,6 +56,9 @@ const C = {
   book3: '#d8b04a',
 };
 
+/** Colours that stay as they are when a piece is recoloured (glass, metal). */
+export const NON_TINTABLE: ReadonlySet<string> = new Set([C.glass, C.metal, C.steel]);
+
 /** Box with its BOTTOM at y0. */
 const box = (
   w: number,
