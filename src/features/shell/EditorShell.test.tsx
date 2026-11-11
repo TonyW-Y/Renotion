@@ -56,6 +56,6 @@ describe('EditorShell', () => {
 
     await user.keyboard('2');
     expect(screen.getByTestId('plan-canvas')).toBeInTheDocument();
-    expect(screen.getByTestId('viewer-3d')).toBeInTheDocument();
+    expect(screen.getByTestId('viewer-3d-loading')).toBeInTheDocument();
   });
 });

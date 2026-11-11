@@ -33,6 +33,8 @@ export function useEditorShortcuts(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
+      // In walk mode the keyboard drives the camera.
+      if (document.pointerLockElement) return;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
 

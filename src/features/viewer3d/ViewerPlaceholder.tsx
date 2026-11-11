@@ -2,11 +2,11 @@ import { motion } from 'motion/react';
 import { Box } from 'lucide-react';
 import { IsoHouse } from '@/components/brand/IsoHouse';
 
-/** Stand-in for the react-three-fiber scene that lands in Phase 2. */
+/** Shown while the 3D viewer bundle loads. */
 export function ViewerPlaceholder() {
   return (
     <div
-      data-testid="viewer-3d"
+      data-testid="viewer-3d-loading"
       className="relative h-full w-full overflow-hidden bg-[radial-gradient(ellipse_at_50%_20%,var(--surface-2),var(--canvas)_70%)]"
     >
       {/* Perspective floor grid */}
@@ -29,10 +29,7 @@ export function ViewerPlaceholder() {
           <span className="flex size-5 items-center justify-center rounded-full bg-accent-soft">
             <Box className="size-3 text-accent" />
           </span>
-          Live 3D view — generated from your plan
-          <span className="rounded-md bg-fg/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle">
-            Soon
-          </span>
+          Loading 3D view…
         </div>
       </div>
     </div>

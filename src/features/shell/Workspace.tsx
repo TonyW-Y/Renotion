@@ -1,6 +1,10 @@
 import { motion } from 'motion/react';
+import { lazy, Suspense } from 'react';
 import { PlanCanvas } from '@/features/editor2d/PlanCanvas';
 import { ViewerPlaceholder } from '@/features/viewer3d/ViewerPlaceholder';
+
+// three.js is large: load the 3D viewer only when it's first shown.
+const Viewer3D = lazy(() => import('@/features/viewer3d/Viewer3D'));
 import { useUiStore } from '@/state/uiStore';
 
 const pane = {
@@ -34,7 +38,9 @@ export function Workspace() {
           className="relative min-h-0 min-w-0 flex-1"
           {...pane}
         >
-          <ViewerPlaceholder />
+          <Suspense fallback={<ViewerPlaceholder />}>
+            <Viewer3D />
+          </Suspense>
         </motion.section>
       )}
     </div>
