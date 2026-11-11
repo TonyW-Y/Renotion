@@ -1,4 +1,13 @@
-import type { FurnitureItem, ID, Opening, RoomMeta, Vec2, Wall } from '../types';
+import type {
+  FurnitureColors,
+  FurnitureItem,
+  FurnitureSize,
+  ID,
+  Opening,
+  RoomMeta,
+  Vec2,
+  Wall,
+} from '../types';
 
 /** A patch where `null` clears an optional field. */
 export interface WallPatch {
@@ -23,6 +32,8 @@ export interface FurniturePatch {
   position?: Vec2;
   rotation?: number;
   elevation?: number | null;
+  size?: FurnitureSize | null;
+  colors?: FurnitureColors | null;
 }
 
 /** An opening plus its position in `plan.openings`, so deletes undo in place. */

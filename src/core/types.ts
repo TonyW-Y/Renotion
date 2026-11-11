@@ -87,7 +87,16 @@ export interface Plan {
 }
 
 export type MaterialCategory =
-  'paint' | 'flooring' | 'tile' | 'ceiling' | 'trim' | 'drywall' | 'door' | 'window' | 'labour';
+  | 'paint'
+  | 'flooring'
+  | 'tile'
+  | 'ceiling'
+  | 'trim'
+  | 'drywall'
+  | 'door'
+  | 'window'
+  | 'labour'
+  | 'furniture';
 
 /** Purchase unit. Lengths/areas are converted from metres at estimate time. */
 export type MaterialUnit = 'gallon' | 'sqft' | 'sqm' | 'box' | 'lft' | 'sheet' | 'each';

@@ -2,6 +2,7 @@ import { pointInPolygon } from './geometry/polygon';
 import { detectRooms } from './geometry/roomDetection';
 import { distance, lerp } from './geometry/vec2';
 import { wallLength } from './geometry/walls';
+import { sizeFactor } from './furniture/placement';
 import { wallSideArea, wallSideRooms, type WallSides } from './estimate/quantities';
 import { resolveRooms, type ResolvedRoom } from './rooms';
 import type { ID, Opening, OpeningType, Plan, Wall } from './types';
@@ -40,7 +41,14 @@ export type ChangeEvent =
   | { type: 'wallAdded'; wallId: ID; length: number; height: number; shares: AreaShare[] }
   | ({ type: 'wallRemoved'; wallId: ID; length: number; height: number } & RoomRef)
   | ({ type: 'openingAdded'; openingId: ID; kind: OpeningType; width: number } & RoomRef)
-  | ({ type: 'openingRemoved'; openingId: ID; kind: OpeningType; width: number } & RoomRef);
+  | ({ type: 'openingRemoved'; openingId: ID; kind: OpeningType; width: number } & RoomRef)
+  | ({
+      type: 'furnitureAdded';
+      itemId: ID;
+      modelId: string;
+      /** Price multiplier for a resized piece (footprint area ratio). */
+      sizeFactor: number;
+    } & RoomRef);
 
 export type ChangeType = ChangeEvent['type'];
 
@@ -200,6 +208,19 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
       kind: o.type,
       width: o.width,
       ...roomForWall(base, o.wallId),
+    });
+  }
+
+  // --- Furniture: only pieces that are new in the plan cost anything.
+  const baseFurniture = new Set(baseline.furniture.map((f) => f.id));
+  for (const f of planned.furniture) {
+    if (baseFurniture.has(f.id)) continue;
+    events.push({
+      type: 'furnitureAdded',
+      itemId: f.id,
+      modelId: f.modelId,
+      sizeFactor: sizeFactor(f),
+      ...roomAt(next, f.position),
     });
   }
 

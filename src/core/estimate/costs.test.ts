@@ -115,3 +115,43 @@ describe('buildEstimate', () => {
     });
   });
 });
+
+describe('buildEstimate: furniture', () => {
+  const ev = (itemId: string, modelId: string, sizeFactor = 1, roomKey = 'r1') =>
+    ({
+      type: 'furnitureAdded',
+      itemId,
+      modelId,
+      sizeFactor,
+      roomKey,
+      roomName: 'Dining',
+    }) as const;
+
+  it('pools identical pieces per room into one line at catalogue price', () => {
+    const est = buildEstimate([
+      ev('a', 'dining-chair'),
+      ev('b', 'dining-chair'),
+      ev('c', 'dining-table'),
+    ]);
+    const chairs = est.lines.find((l) => l.materialId === 'furniture:dining-chair');
+    expect(chairs).toMatchObject({
+      category: 'furniture',
+      quantity: 2,
+      unit: 'each',
+      unitCost: 129,
+      total: 258,
+    });
+    expect(est.byCategory.find((c) => c.key === 'furniture')?.total).toBe(258 + 799);
+  });
+
+  it('prices resized pieces by footprint area and keeps them on their own line', () => {
+    const est = buildEstimate([ev('a', 'sofa'), ev('b', 'sofa', 1.5)]);
+    const sofas = est.lines.filter((l) => l.materialId === 'furniture:sofa');
+    expect(sofas.map((l) => l.unitCost).sort()).toEqual([1299, 1949]);
+  });
+
+  it('applies per-project price overrides', () => {
+    const est = buildEstimate([ev('a', 'sofa', 2)], { 'furniture:sofa': 1000 });
+    expect(est.lines[0]?.unitCost).toBe(2000);
+  });
+});

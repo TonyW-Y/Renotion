@@ -144,3 +144,35 @@ describe('diffPlans', () => {
     expect(types).toContain('wallRemoved');
   });
 });
+
+describe('diffPlans: furniture', () => {
+  const sofa = { id: 'f1', modelId: 'sofa', position: { x: 2, y: 1.5 }, rotation: 0 };
+  const chair = { id: 'f2', modelId: 'dining-chair', position: { x: 1, y: 1 }, rotation: 0 };
+
+  it('reports new furniture with its room and size factor', () => {
+    const base = room();
+    const rooms = detectRooms(base.walls);
+    const named = run(base, setRoomMeta(null, { key: rooms[0]?.key ?? '', name: 'Living' }));
+    const planned: Plan = {
+      ...named,
+      furniture: [sofa, { ...chair, size: { width: 0.9, depth: 1.04, height: 0.9 } }],
+    };
+    const events = diffPlans(named, planned).filter((e) => e.type === 'furnitureAdded');
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatchObject({
+      type: 'furnitureAdded',
+      itemId: 'f1',
+      modelId: 'sofa',
+      sizeFactor: 1,
+      roomName: 'Living',
+    });
+    expect(events[1]).toMatchObject({ itemId: 'f2' });
+    if (events[1]?.type === 'furnitureAdded') expect(events[1].sizeFactor).toBeGreaterThan(1);
+  });
+
+  it('ignores furniture that was already there, moved or removed', () => {
+    const base: Plan = { ...room(), furniture: [sofa, chair] };
+    const planned: Plan = { ...base, furniture: [{ ...sofa, position: { x: 1, y: 1 } }] };
+    expect(diffPlans(base, planned).filter((e) => e.type === 'furnitureAdded')).toEqual([]);
+  });
+});

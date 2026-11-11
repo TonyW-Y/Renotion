@@ -1,3 +1,4 @@
+import { FURNITURE_BY_ID } from '../furniture/catalog';
 import type { Material } from '../types';
 
 /**
@@ -248,10 +249,27 @@ const CUSTOM_PAINT = /^paint:(#[0-9a-f]{6})$/i;
 export const customPaintId = (hex: string): string => `paint:${hex.toLowerCase()}`;
 
 /** Looks up a material, including custom paint colours. */
+/** Material ids for catalogue furniture are `furniture:<modelId>`. */
+export const FURNITURE_PREFIX = 'furniture:';
+export const furnitureMaterialId = (modelId: string): string => FURNITURE_PREFIX + modelId;
+
 export function getMaterial(id: string | undefined): Material | undefined {
   if (!id) return undefined;
   const known = MATERIALS_BY_ID.get(id);
   if (known) return known;
+  if (id.startsWith(FURNITURE_PREFIX)) {
+    const model = FURNITURE_BY_ID.get(id.slice(FURNITURE_PREFIX.length));
+    return model
+      ? {
+          id,
+          name: model.name,
+          category: 'furniture',
+          costPerUnit: model.price,
+          unit: 'each',
+          wasteFactor: 0,
+        }
+      : undefined;
+  }
   const m = CUSTOM_PAINT.exec(id);
   if (m?.[1]) return { ...paint('custom', `Custom ${m[1].toUpperCase()}`, m[1]), id };
   return undefined;

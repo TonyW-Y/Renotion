@@ -1,6 +1,6 @@
 import type { ChangeEvent } from '../diff';
 import type { Material, MaterialUnit } from '../types';
-import { getMaterial } from './defaultCosts';
+import { furnitureMaterialId, getMaterial } from './defaultCosts';
 import {
   baseboardMetres,
   drywallSheets,
@@ -10,7 +10,15 @@ import {
 } from './quantities';
 
 export type CostCategory =
-  'flooring' | 'tile' | 'paint' | 'trim' | 'drywall' | 'doors' | 'windows' | 'demolition';
+  | 'flooring'
+  | 'tile'
+  | 'paint'
+  | 'trim'
+  | 'drywall'
+  | 'doors'
+  | 'windows'
+  | 'demolition'
+  | 'furniture';
 
 export const CATEGORY_LABELS: Record<CostCategory, string> = {
   flooring: 'Flooring',
@@ -21,6 +29,7 @@ export const CATEGORY_LABELS: Record<CostCategory, string> = {
   doors: 'Doors',
   windows: 'Windows',
   demolition: 'Demolition',
+  furniture: 'Furniture',
 };
 
 export interface LineItem {
@@ -82,9 +91,9 @@ export function buildEstimate(
       'roomKey' | 'roomName' | 'category' | 'description' | 'quantity' | 'unit' | 'basis'
     >,
     m: Material,
+    unitCost = price(m),
   ) => {
     if (a.quantity <= 0) return;
-    const unitCost = price(m);
     lines.push({
       ...a,
       id: `${a.category}:${a.roomKey ?? 'ext'}:${m.id}:${lines.length}`,
@@ -112,6 +121,7 @@ export function buildEstimate(
   };
 
   const counts = new Map<string, Accumulator>();
+  const furniture = new Map<string, Accumulator & { factor: number }>();
 
   for (const e of events) {
     switch (e.type) {
@@ -173,6 +183,23 @@ export function buildEstimate(
       }
       case 'openingRemoved':
         break;
+      case 'furnitureAdded': {
+        const m = getMaterial(furnitureMaterialId(e.modelId));
+        if (!m) break;
+        const factor = Math.round(e.sizeFactor * 100) / 100;
+        const k = `${e.roomKey ?? ''}|${m.id}|${factor}`;
+        const cur = furniture.get(k);
+        if (cur) cur.amount += 1;
+        else
+          furniture.set(k, {
+            roomKey: e.roomKey,
+            roomName: e.roomName,
+            material: m,
+            amount: 1,
+            factor,
+          });
+        break;
+      }
     }
   }
 
@@ -222,6 +249,25 @@ export function buildEstimate(
         basis: `${a.amount} × ${a.material.name.toLowerCase()}`,
       },
       a.material,
+    );
+  }
+
+  for (const a of furniture.values()) {
+    const resized = a.factor !== 1;
+    push(
+      {
+        roomKey: a.roomKey,
+        roomName: a.roomName,
+        category: 'furniture',
+        description: resized ? `${a.material.name} (custom size)` : a.material.name,
+        quantity: a.amount,
+        unit: 'each',
+        basis: resized
+          ? `${a.amount} × ${a.material.name.toLowerCase()} at ${Math.round(a.factor * 100)}% size`
+          : `${a.amount} × ${a.material.name.toLowerCase()}`,
+      },
+      a.material,
+      Math.round(price(a.material) * a.factor),
     );
   }
 

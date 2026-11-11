@@ -10,4 +10,5 @@ export const PHASE_COLORS: Record<TaskPhase, string> = {
   paint: '#d973a6',
   flooring: '#b8875a',
   finish: '#4f9d69',
+  furnish: '#4f8cff',
 };

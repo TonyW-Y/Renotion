@@ -52,6 +52,7 @@ function chain(
 export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
   const tasks: TaskSpec[] = [];
   const painted = new Map<string, { roomKey: string | null; roomName: string; area: number }>();
+  const furnished = new Map<string, { roomKey: string | null; roomName: string; pieces: number }>();
 
   for (const e of events) {
     switch (e.type) {
@@ -89,6 +90,13 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
           ),
         );
         break;
+      case 'furnitureAdded': {
+        const k = roomId(e.roomKey);
+        const cur = furnished.get(k) ?? { roomKey: e.roomKey, roomName: e.roomName, pieces: 0 };
+        cur.pieces += 1;
+        furnished.set(k, cur);
+        break;
+      }
       case 'openingRemoved':
         tasks.push(
           ...chain(
@@ -108,6 +116,14 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
     tasks.push(...chain(`paint:${k}`, 'roomPainted', TEMPLATES.roomPainted, p, p.area));
   }
 
+  for (const [k, f] of furnished) {
+    const [task] = chain(`furnish:${k}`, 'roomFurnished', TEMPLATES.roomFurnished, f, f.pieces);
+    if (task) {
+      task.title = `${task.title} (${f.pieces} ${f.pieces === 1 ? 'piece' : 'pieces'})`;
+      tasks.push(task);
+    }
+  }
+
   // Cross-room ordering rules.
   const keysWhere = (pred: (t: TaskSpec) => boolean) => tasks.filter(pred).map((t) => t.key);
   const demolition = keysWhere((t) => t.phase === 'demolition');
@@ -120,6 +136,13 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
     if (t.phase === 'prep' || t.phase === 'paint') {
       if (t.templateKey.startsWith('roomPainted') || t.templateKey.startsWith('wallRemoved.paint'))
         addDeps(t, drywall);
+    }
+    // Furniture goes in once everything else in that room is done.
+    if (t.phase === 'furnish') {
+      addDeps(
+        t,
+        keysWhere((p) => p.roomKey === t.roomKey && p.phase !== 'furnish'),
+      );
     }
     if (t.templateKey === 'floorChanged.install') {
       addDeps(

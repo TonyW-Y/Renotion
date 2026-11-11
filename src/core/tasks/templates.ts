@@ -5,7 +5,15 @@ import type { ChangeType } from '../diff';
  * ordering rules in `generate.ts` are expressed in terms of these.
  */
 export type TaskPhase =
-  'consult' | 'demolition' | 'framing' | 'drywall' | 'prep' | 'paint' | 'flooring' | 'finish';
+  | 'consult'
+  | 'demolition'
+  | 'framing'
+  | 'drywall'
+  | 'prep'
+  | 'paint'
+  | 'flooring'
+  | 'finish'
+  | 'furnish';
 
 export const PHASE_ORDER: readonly TaskPhase[] = [
   'consult',
@@ -16,6 +24,7 @@ export const PHASE_ORDER: readonly TaskPhase[] = [
   'paint',
   'flooring',
   'finish',
+  'furnish',
 ];
 
 export const PHASE_LABELS: Record<TaskPhase, string> = {
@@ -27,6 +36,7 @@ export const PHASE_LABELS: Record<TaskPhase, string> = {
   paint: 'Paint',
   flooring: 'Flooring',
   finish: 'Finishing',
+  furnish: 'Furnishing',
 };
 
 export interface TaskTemplate {
@@ -46,7 +56,7 @@ export const halfDays = (d: number): number => Math.max(0.5, Math.ceil(d * 2) / 
  * the previous one). Durations are rough single-crew estimates.
  */
 export const TEMPLATES: Record<
-  Exclude<ChangeType, 'wallPainted'> | 'roomPainted',
+  Exclude<ChangeType, 'wallPainted' | 'furnitureAdded'> | 'roomPainted' | 'roomFurnished',
   readonly TaskTemplate[]
 > = {
   floorChanged: [
@@ -100,6 +110,14 @@ export const TEMPLATES: Record<
     { step: 'cut', title: 'Cut opening & install header', phase: 'framing', duration: 1 },
     { step: 'install', title: 'Install unit', phase: 'finish', duration: 0.5 },
     { step: 'trim', title: 'Trim & caulk', phase: 'finish', duration: 0.5 },
+  ],
+  roomFurnished: [
+    {
+      step: 'deliver',
+      title: 'Deliver & set up furniture',
+      phase: 'furnish',
+      duration: (pieces) => halfDays(pieces * 0.15),
+    },
   ],
   openingRemoved: [
     { step: 'infill', title: 'Frame in old opening', phase: 'framing', duration: 0.5 },

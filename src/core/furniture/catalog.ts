@@ -29,6 +29,8 @@ export interface FurnitureModel {
   depth: number;
   height: number;
   parts: FurniturePart[];
+  /** Rough retail price (CAD) at the catalogue size. */
+  price: number;
   /** Optional CC0 glTF model to use instead of the procedural parts. */
   gltf?: string;
 }
@@ -115,7 +117,7 @@ const legs = (
     return round ? cyl(size, h, x, z, 0, color) : box(size, h, size, x, z, 0, color);
   });
 
-function sofa(id: string, name: string, w: number): FurnitureModel {
+function sofa(id: string, name: string, w: number, price: number): FurnitureModel {
   const d = 0.9;
   const seats = w > 1.8 ? 3 : 2;
   const inner = w - 0.36;
@@ -123,6 +125,7 @@ function sofa(id: string, name: string, w: number): FurnitureModel {
     id,
     name,
     category: 'Living',
+    price,
     width: w,
     depth: d,
     height: 0.82,
@@ -147,12 +150,13 @@ function sofa(id: string, name: string, w: number): FurnitureModel {
   };
 }
 
-function bed(id: string, name: string, w: number, l: number): FurnitureModel {
+function bed(id: string, name: string, w: number, l: number, price: number): FurnitureModel {
   const pillows = w > 1.2 ? 2 : 1;
   return {
     id,
     name,
     category: 'Bedroom',
+    price,
     width: w,
     depth: l,
     height: 1.05,
@@ -179,12 +183,13 @@ function bed(id: string, name: string, w: number, l: number): FurnitureModel {
 
 export const FURNITURE: readonly FurnitureModel[] = [
   // ---------------- Living
-  sofa('sofa', 'Sofa', 2.1),
-  sofa('loveseat', 'Loveseat', 1.5),
+  sofa('sofa', 'Sofa', 2.1, 1299),
+  sofa('loveseat', 'Loveseat', 1.5, 899),
   {
     id: 'armchair',
     name: 'Armchair',
     category: 'Living',
+    price: 549,
     width: 0.85,
     depth: 0.85,
     height: 0.8,
@@ -201,6 +206,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'coffee-table',
     name: 'Coffee table',
     category: 'Living',
+    price: 249,
     width: 1.1,
     depth: 0.6,
     height: 0.42,
@@ -214,6 +220,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'side-table',
     name: 'Side table',
     category: 'Living',
+    price: 99,
     width: 0.5,
     depth: 0.5,
     height: 0.55,
@@ -227,6 +234,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'tv-stand',
     name: 'TV stand',
     category: 'Living',
+    price: 329,
     width: 1.6,
     depth: 0.42,
     height: 1.25,
@@ -241,6 +249,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'bookshelf',
     name: 'Bookshelf',
     category: 'Living',
+    price: 199,
     width: 0.9,
     depth: 0.35,
     height: 1.9,
@@ -260,6 +269,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'rug',
     name: 'Rug',
     category: 'Living',
+    price: 249,
     width: 2.0,
     depth: 1.4,
     height: 0.01,
@@ -269,6 +279,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'floor-lamp',
     name: 'Floor lamp',
     category: 'Living',
+    price: 129,
     width: 0.4,
     depth: 0.4,
     height: 1.6,
@@ -282,6 +293,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'plant',
     name: 'Plant',
     category: 'Living',
+    price: 59,
     width: 0.5,
     depth: 0.5,
     height: 1.1,
@@ -296,6 +308,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'dining-table',
     name: 'Dining table',
     category: 'Dining',
+    price: 799,
     width: 1.6,
     depth: 0.9,
     height: 0.75,
@@ -308,6 +321,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'dining-chair',
     name: 'Dining chair',
     category: 'Dining',
+    price: 129,
     width: 0.45,
     depth: 0.5,
     height: 0.9,
@@ -318,12 +332,13 @@ export const FURNITURE: readonly FurnitureModel[] = [
     ],
   },
   // ---------------- Bedroom
-  bed('double-bed', 'Double bed', 1.6, 2.1),
-  bed('single-bed', 'Single bed', 1.0, 2.0),
+  bed('double-bed', 'Double bed', 1.6, 2.1, 1199),
+  bed('single-bed', 'Single bed', 1.0, 2.0, 649),
   {
     id: 'nightstand',
     name: 'Nightstand',
     category: 'Bedroom',
+    price: 149,
     width: 0.5,
     depth: 0.4,
     height: 0.55,
@@ -337,6 +352,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'wardrobe',
     name: 'Wardrobe',
     category: 'Bedroom',
+    price: 899,
     width: 1.2,
     depth: 0.6,
     height: 2.1,
@@ -351,6 +367,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'dresser',
     name: 'Dresser',
     category: 'Bedroom',
+    price: 599,
     width: 1.2,
     depth: 0.5,
     height: 0.85,
@@ -365,6 +382,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'desk',
     name: 'Desk',
     category: 'Office',
+    price: 349,
     width: 1.4,
     depth: 0.7,
     height: 1.2,
@@ -379,6 +397,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'office-chair',
     name: 'Office chair',
     category: 'Office',
+    price: 299,
     width: 0.6,
     depth: 0.6,
     height: 1.0,
@@ -394,6 +413,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'base-cabinet',
     name: 'Kitchen counter',
     category: 'Kitchen',
+    price: 650,
     width: 0.6,
     depth: 0.6,
     height: 0.92,
@@ -407,6 +427,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'kitchen-island',
     name: 'Kitchen island',
     category: 'Kitchen',
+    price: 1800,
     width: 1.8,
     depth: 0.9,
     height: 0.92,
@@ -420,6 +441,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'fridge',
     name: 'Fridge',
     category: 'Kitchen',
+    price: 1899,
     width: 0.8,
     depth: 0.75,
     height: 1.8,
@@ -433,6 +455,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'stove',
     name: 'Stove',
     category: 'Kitchen',
+    price: 1299,
     width: 0.76,
     depth: 0.65,
     height: 0.95,
@@ -452,6 +475,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'sink-cabinet',
     name: 'Kitchen sink',
     category: 'Kitchen',
+    price: 950,
     width: 0.8,
     depth: 0.6,
     height: 1.15,
@@ -467,6 +491,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'toilet',
     name: 'Toilet',
     category: 'Bathroom',
+    price: 399,
     width: 0.4,
     depth: 0.7,
     height: 0.8,
@@ -480,6 +505,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'bathtub',
     name: 'Bathtub',
     category: 'Bathroom',
+    price: 1100,
     width: 1.7,
     depth: 0.75,
     height: 0.75,
@@ -493,6 +519,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'vanity',
     name: 'Bathroom vanity',
     category: 'Bathroom',
+    price: 749,
     width: 0.9,
     depth: 0.5,
     height: 1.05,
@@ -507,6 +534,7 @@ export const FURNITURE: readonly FurnitureModel[] = [
     id: 'shower',
     name: 'Shower',
     category: 'Bathroom',
+    price: 1600,
     width: 0.9,
     depth: 0.9,
     height: 2.0,

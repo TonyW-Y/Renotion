@@ -77,3 +77,28 @@ describe('generateTasks', () => {
     expect(tasks[0]?.title).toBe('New window: Cut opening & install header');
   });
 });
+
+describe('generateTasks: furniture', () => {
+  const sofa: ChangeEvent = {
+    type: 'furnitureAdded',
+    itemId: 'f1',
+    modelId: 'sofa',
+    sizeFactor: 1,
+    ...room,
+  };
+  const chair: ChangeEvent = { ...sofa, itemId: 'f2', modelId: 'dining-chair' };
+
+  it("adds one delivery task per room, after that room's paint and flooring", () => {
+    const tasks = generateTasks([sofa, chair, floor, paint]);
+    const furnish = tasks.filter((t) => t.phase === 'furnish');
+    expect(furnish).toHaveLength(1);
+    const f = furnish[0];
+    expect(f?.title).toBe('Deliver & set up furniture (2 pieces)');
+    const install = tasks.find((t) => t.templateKey === 'floorChanged.install');
+    const painting = tasks.find((t) => t.templateKey === 'roomPainted.paint');
+    expect(f?.deps).toContain(install?.key);
+    expect(f?.deps).toContain(painting?.key);
+    expect(tasks.at(-1)?.phase).toBe('furnish');
+    expect(() => buildSchedule(tasks, '2026-01-05')).not.toThrow();
+  });
+});
