@@ -2,6 +2,38 @@ import { createEmptyPlan, type ID, type Plan } from './types';
 
 export type PlanKind = 'baseline' | 'planned';
 
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+
+/** User-editable state for a generated task, keyed by the task's stable key. */
+export interface TaskState {
+  status: TaskStatus;
+  /** Overrides the template duration. */
+  durationDays?: number;
+  notes?: string;
+}
+
+export type ExpenseCategory =
+  | 'flooring'
+  | 'tile'
+  | 'paint'
+  | 'trim'
+  | 'drywall'
+  | 'doors'
+  | 'windows'
+  | 'demolition'
+  | 'labour'
+  | 'other';
+
+export interface Expense {
+  id: ID;
+  /** YYYY-MM-DD */
+  spentOn: string;
+  description: string;
+  category: ExpenseCategory;
+  roomKey: string | null;
+  amount: number;
+}
+
 /**
  * A project holds two plans: the home as it is (`baseline`) and after the
  * renovation (`planned`, created by "Start planning"). Estimates and tasks are
@@ -16,6 +48,11 @@ export interface ProjectDoc {
   planned: Plan | null;
   /** Price overrides (CAD per unit) keyed by material id. */
   costOverrides: Record<string, number>;
+  /** Project start (YYYY-MM-DD) for the schedule; null = today. */
+  startDate: string | null;
+  skipWeekends: boolean;
+  tasks: Record<string, TaskState>;
+  expenses: Expense[];
 }
 
 export function createProject(
@@ -31,6 +68,10 @@ export function createProject(
     baseline: createEmptyPlan(),
     planned: null,
     costOverrides: {},
+    startDate: null,
+    skipWeekends: true,
+    tasks: {},
+    expenses: [],
   };
 }
 
@@ -71,7 +112,42 @@ export function normalizeProject(v: unknown): ProjectDoc | null {
     baseline: normalizePlan(v.baseline),
     planned: v.planned ? normalizePlan(v.planned) : null,
     costOverrides: normalizeOverrides(v.costOverrides),
+    startDate: typeof v.startDate === 'string' && ISO_DATE.test(v.startDate) ? v.startDate : null,
+    skipWeekends: v.skipWeekends !== false,
+    tasks: normalizeTasks(v.tasks),
+    expenses: Array.isArray(v.expenses) ? v.expenses.filter(isExpense) : [],
   };
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const STATUSES = new Set<TaskStatus>(['todo', 'in_progress', 'done']);
+
+function normalizeTasks(v: unknown): Record<string, TaskState> {
+  if (!isObject(v)) return {};
+  const out: Record<string, TaskState> = {};
+  for (const [k, raw] of Object.entries(v)) {
+    if (!isObject(raw) || !STATUSES.has(raw.status as TaskStatus)) continue;
+    out[k] = {
+      status: raw.status as TaskStatus,
+      ...(typeof raw.durationDays === 'number' && raw.durationDays > 0
+        ? { durationDays: raw.durationDays }
+        : {}),
+      ...(typeof raw.notes === 'string' && raw.notes ? { notes: raw.notes } : {}),
+    };
+  }
+  return out;
+}
+
+function isExpense(v: unknown): v is Expense {
+  return (
+    isObject(v) &&
+    typeof v.id === 'string' &&
+    typeof v.spentOn === 'string' &&
+    typeof v.description === 'string' &&
+    typeof v.category === 'string' &&
+    typeof v.amount === 'number' &&
+    Number.isFinite(v.amount)
+  );
 }
 
 function normalizeOverrides(v: unknown): Record<string, number> {

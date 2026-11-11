@@ -31,6 +31,28 @@ describe('project', () => {
     expect(
       normalizeProject({ id: 'x', costOverrides: { oak: 8, bad: 'x', neg: -1 } })?.costOverrides,
     ).toEqual({ oak: 8 });
+    expect(p?.skipWeekends).toBe(true);
+    expect(p?.tasks).toEqual({});
+    expect(p?.expenses).toEqual([]);
+    const withTasks = normalizeProject({
+      id: 'x',
+      startDate: '2026-11-09',
+      tasks: { a: { status: 'done', durationDays: 2 }, b: { status: 'nope' } },
+      expenses: [
+        {
+          id: 'e',
+          spentOn: '2026-11-10',
+          description: 'Paint',
+          category: 'paint',
+          roomKey: null,
+          amount: 62,
+        },
+        { id: 1 },
+      ],
+    });
+    expect(withTasks?.startDate).toBe('2026-11-09');
+    expect(withTasks?.tasks).toEqual({ a: { status: 'done', durationDays: 2 } });
+    expect(withTasks?.expenses).toHaveLength(1);
     expect(normalizeProject(null)).toBeNull();
     expect(normalizeProject({ name: 'no id' })).toBeNull();
   });

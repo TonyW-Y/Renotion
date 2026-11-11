@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { applyCommand, describeCommand, invertCommand, type Command } from '@/core/commands';
-import { clonePlan, createProject, getPlan, type PlanKind, type ProjectDoc } from '@/core/project';
+import {
+  clonePlan,
+  createProject,
+  getPlan,
+  type Expense,
+  type PlanKind,
+  type ProjectDoc,
+  type TaskState,
+} from '@/core/project';
 import type { Plan } from '@/core/types';
 import { createId } from '@/lib/id';
 
@@ -36,6 +44,12 @@ export interface PlanState {
   setProjectName: (name: string) => void;
   /** Sets (or with null, clears) a per-project price override. */
   setCostOverride: (materialId: string, costPerUnit: number | null) => void;
+  setStartDate: (date: string | null) => void;
+  setSkipWeekends: (skip: boolean) => void;
+  /** Merges into a task's state (status defaults to 'todo'). */
+  updateTask: (key: string, patch: Partial<TaskState>) => void;
+  addExpense: (expense: Expense) => void;
+  removeExpense: (id: string) => void;
   loadProject: (doc: ProjectDoc) => void;
   newProject: () => ProjectDoc;
   setSaveStatus: (status: SaveStatus) => void;
@@ -132,6 +146,47 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
       );
       return { project: { ...s.project, costOverrides, updatedAt: new Date().toISOString() } };
     });
+  },
+
+  setStartDate: (startDate) => {
+    set((s) => ({ project: { ...s.project, startDate, updatedAt: new Date().toISOString() } }));
+  },
+
+  setSkipWeekends: (skipWeekends) => {
+    set((s) => ({ project: { ...s.project, skipWeekends, updatedAt: new Date().toISOString() } }));
+  },
+
+  updateTask: (key, patch) => {
+    set((s) => {
+      const prev = s.project.tasks[key] ?? { status: 'todo' as const };
+      return {
+        project: {
+          ...s.project,
+          tasks: { ...s.project.tasks, [key]: { ...prev, ...patch } },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  },
+
+  addExpense: (expense) => {
+    set((s) => ({
+      project: {
+        ...s.project,
+        expenses: [...s.project.expenses, expense],
+        updatedAt: new Date().toISOString(),
+      },
+    }));
+  },
+
+  removeExpense: (id) => {
+    set((s) => ({
+      project: {
+        ...s.project,
+        expenses: s.project.expenses.filter((e) => e.id !== id),
+        updatedAt: new Date().toISOString(),
+      },
+    }));
   },
 
   loadProject: (doc) => {
