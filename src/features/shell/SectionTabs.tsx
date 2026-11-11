@@ -1,4 +1,4 @@
-import { Calculator, CalendarRange, PencilRuler } from 'lucide-react';
+import { Calculator, CalendarRange, PencilRuler, Wallet } from 'lucide-react';
 import { SegmentedControl, type SegmentOption } from '@/components/ui';
 import { useUiStore, type Section } from '@/state/uiStore';
 
@@ -34,6 +34,16 @@ const SECTIONS: readonly SegmentOption<Section>[] = [
       </>
     ),
     ariaLabel: 'Schedule',
+  },
+  {
+    value: 'budget',
+    label: (
+      <>
+        <Wallet className={icon} />
+        <span className="hidden md:inline">Budget</span>
+      </>
+    ),
+    ariaLabel: 'Budget',
   },
 ];
 
