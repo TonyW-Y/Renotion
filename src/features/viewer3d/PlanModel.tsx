@@ -15,6 +15,7 @@ import {
   wallFaceMaterial,
   type HighlightState,
 } from './finishMaterials';
+import { FurnitureModels } from './FurnitureModels';
 import { highlighted, MATERIALS } from './materials';
 
 const CLICK_SLOP_PX = 4;
@@ -322,6 +323,7 @@ export function PlanModel({
           interactive={interactive}
         />
       ))}
+      <FurnitureModels items={plan.furniture} interactive={interactive} accent={accent} />
       {ceilings &&
         rooms.map((r) => {
           const h = Math.min(...r.wallIds.map((id) => wallsById.get(id)?.height ?? 2.44));
