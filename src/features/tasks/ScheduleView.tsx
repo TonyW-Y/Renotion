@@ -288,7 +288,7 @@ export function ScheduleView() {
                 <div className="min-w-0 flex-1 overflow-x-auto">
                   <div style={{ width: totalDays * DAY + 24 }} className="relative">
                     <div className="sticky top-0 flex h-10 border-b border-border">
-                      {days.map((d, i) => (
+                      {days.map((d) => (
                         <div
                           key={d}
                           style={{ width: DAY }}
@@ -298,9 +298,7 @@ export function ScheduleView() {
                           )}
                         >
                           <span>{fmtDate(d, { weekday: 'narrow' })}</span>
-                          <span className="font-mono">
-                            {i === 0 || d.endsWith('-01') ? fmtDate(d) : d.slice(8)}
-                          </span>
+                          <span className="font-mono">{Number(d.slice(8))}</span>
                         </div>
                       ))}
                     </div>

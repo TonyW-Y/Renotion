@@ -6,6 +6,7 @@ import { openingSpan, wallDirection, wallFootprint } from '@/core/geometry/walls
 import { add, perp, scale, sub } from '@/core/geometry/vec2';
 import { resolveRooms } from '@/core/rooms';
 import type { Plan, Vec2 } from '@/core/types';
+import { THEME_PALETTE, type SnapshotPalette } from './snapshotPalette';
 
 const pts = (ps: readonly Vec2[]) =>
   ps.map((p) => `${p.x.toFixed(3)},${(-p.y).toFixed(3)}`).join(' ');
@@ -15,10 +16,12 @@ export function PlanSnapshot({
   plan,
   className,
   labels = false,
+  palette = THEME_PALETTE,
 }: {
   plan: Plan;
   className?: string;
   labels?: boolean;
+  palette?: SnapshotPalette;
 }) {
   const { rooms, joins, box } = useMemo(() => {
     const all = plan.walls.flatMap((w) => [w.start, w.end]);
@@ -51,16 +54,12 @@ export function PlanSnapshot({
         <polygon
           key={r.key}
           points={pts(r.polygon)}
-          fill={getMaterial(r.meta?.floorMaterial)?.colorHex ?? 'var(--room, #e8eefc)'}
+          fill={getMaterial(r.meta?.floorMaterial)?.colorHex ?? palette.room}
           opacity={0.75}
         />
       ))}
       {plan.walls.map((w) => (
-        <polygon
-          key={w.id}
-          points={pts(wallFootprint(w, joins.get(w.id)))}
-          fill="var(--wall, #253041)"
-        />
+        <polygon key={w.id} points={pts(wallFootprint(w, joins.get(w.id)))} fill={palette.wall} />
       ))}
       {plan.openings.map((o) => {
         const w = walls.get(o.wallId);
@@ -76,7 +75,7 @@ export function PlanSnapshot({
               sub(span.end, n),
               sub(span.start, n),
             ])}
-            fill={o.type === 'window' ? '#bfe3f5' : 'var(--canvas, #fff)'}
+            fill={o.type === 'window' ? '#bfe3f5' : palette.gap}
           />
         );
       })}

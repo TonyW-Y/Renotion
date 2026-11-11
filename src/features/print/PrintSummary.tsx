@@ -1,5 +1,6 @@
 import { CATEGORY_LABELS } from '@/core/estimate/costs';
 import { PlanSnapshot } from '@/features/projects/PlanSnapshot';
+import { PRINT_PALETTE } from '@/features/projects/snapshotPalette';
 import { formatMoney, formatQuantity } from '@/lib/format';
 import { usePlanStore } from '@/state/planStore';
 import { useEstimate } from '@/state/useEstimate';
@@ -30,7 +31,12 @@ export function PrintSummary() {
         <h2 className="mb-2 text-sm font-semibold">
           {project.planned ? 'Renovation plan' : 'Floor plan'}
         </h2>
-        <PlanSnapshot plan={plan} labels className="mx-auto max-h-[340px] w-full" />
+        <PlanSnapshot
+          plan={plan}
+          labels
+          palette={PRINT_PALETTE}
+          className="mx-auto max-h-[340px] w-full"
+        />
       </section>
 
       <section className="mt-6 break-inside-avoid">
