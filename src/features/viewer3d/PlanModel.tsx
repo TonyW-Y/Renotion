@@ -18,7 +18,7 @@ function useHighlight(
   accent: string,
 ) {
   const mat = useMemo(
-    () => (state === 'none' ? base : highlighted(base, accent, state === 'selected' ? 0.38 : 0.16)),
+    () => (state === 'none' ? base : highlighted(base, accent, state === 'selected' ? 0.55 : 0.2)),
     [base, state, accent],
   );
   useEffect(

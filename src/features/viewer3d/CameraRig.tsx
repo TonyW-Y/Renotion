@@ -143,16 +143,21 @@ export function CameraRig({ mode, bounds, plan, rooms, fitKey }: CameraRigProps)
     );
   }
 
-  const d = Math.max(size, 4) * 1.15;
+  // Distance that fits a sphere around the plan in the view, for any aspect ratio.
+  const fov = 40;
+  const radius = Math.max(size, 4) * 0.72;
+  const aspect = size3.width / Math.max(1, size3.height);
+  const d = radius / Math.sin(((fov / 2) * Math.PI) / 180) / Math.min(1, aspect);
+  const dir = new THREE.Vector3(0.55, 0.62, 0.56).normalize().multiplyScalar(d);
   return (
     <>
       <PerspectiveCamera
         key={`orbit-${fitKey}`}
         makeDefault
-        fov={40}
+        fov={fov}
         near={0.1}
         far={500}
-        position={[cx + d * 0.75, d * 0.9, cz + d]}
+        position={[cx + dir.x, dir.y, cz + dir.z]}
       />
       <OrbitControls
         key={`orbit-ctl-${fitKey}`}
