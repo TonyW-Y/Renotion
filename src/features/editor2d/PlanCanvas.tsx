@@ -15,13 +15,16 @@ import {
   OpeningCuts,
   OpeningShape,
   OpeningShapes,
+  PaintStrips,
   RoomLabels,
   RoomShapes,
   SegmentDimension,
   WallShapes,
 } from './shapes';
 import { useCanvasInteraction } from './useCanvasInteraction';
+import { usePatternImages } from './usePatternImages';
 import { useThemeColors } from './useThemeColors';
+import { getMaterial } from '@/core/estimate/defaultCosts';
 import { boundsOf, fitView, flat, makeView, toScreen } from './viewport';
 import { ZoomControls } from './ZoomControls';
 
@@ -45,6 +48,9 @@ export function PlanCanvas() {
   const ix = useCanvasInteraction(view, plan, baseDerived.rooms);
   const { previewPlan } = ix;
   const { rooms, joins } = useDerivedPlan(previewPlan);
+  const patterns = usePatternImages(
+    rooms.flatMap((r) => getMaterial(r.meta?.floorMaterial)?.textureSet ?? []),
+  );
 
   // Redraw once web fonts are ready (Konva measures text on draw).
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -150,6 +156,7 @@ export function PlanCanvas() {
               selection={selection}
               hover={hover}
             />
+            <PaintStrips walls={previewPlan.walls} view={view} />
             <OpeningCuts openings={previewPlan.openings} walls={previewPlan.walls} view={view} />
             <RoomShapes
               rooms={rooms}
@@ -158,6 +165,7 @@ export function PlanCanvas() {
               selection={selection}
               hover={hover}
               behind
+              patterns={patterns}
             />
             <WallShapes
               pass="highlight"

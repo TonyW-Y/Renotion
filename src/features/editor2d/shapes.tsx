@@ -5,6 +5,7 @@ import { openingSpan, wallDirection, wallFootprint, wallLength } from '@/core/ge
 import type { EndpointJoins } from '@/core/geometry/wallGraph';
 import type { ResolvedRoom } from '@/core/rooms';
 import type { ID, Opening, Vec2, Wall } from '@/core/types';
+import { getMaterial } from '@/core/estimate/defaultCosts';
 import { formatArea, formatLength, type UnitSystem } from '@/core/units';
 import type { Selection } from '@/state/uiStore';
 import type { CanvasColors } from './useThemeColors';
@@ -37,26 +38,94 @@ export function RoomShapes({
   selection,
   hover,
   behind = false,
-}: Omit<RoomsProps, 'units'> & { behind?: boolean }) {
+  patterns,
+}: Omit<RoomsProps, 'units'> & {
+  behind?: boolean;
+  patterns?: ReadonlyMap<string, HTMLImageElement>;
+}) {
+  const op = behind ? 'destination-over' : 'source-over';
   return (
     <>
       {rooms.map((r) => {
         const selected = isSel(selection, 'room', r.key);
         const hovered = isSel(hover, 'room', r.key);
+        const points = flat(r.polygon, view);
+        const finish = getMaterial(r.meta?.floorMaterial);
+        const img = finish?.textureSet ? patterns?.get(finish.textureSet) : undefined;
+        const k = img && finish?.tileSize ? (finish.tileSize * view.s) / img.width : 1;
+        // In destination-over mode, shapes drawn later end up underneath:
+        // draw the highlight first so it sits on top of the floor finish.
         return (
-          <Line
-            key={r.key}
-            points={flat(r.polygon, view)}
-            closed
-            fill={selected || hovered ? colors.accentSoft : colors.room}
-            stroke={selected ? colors.accent : 'transparent'}
-            strokeWidth={selected ? 1 : 0}
-            dash={[6, 4]}
-            perfectDrawEnabled={false}
-            globalCompositeOperation={behind ? 'destination-over' : 'source-over'}
-          />
+          <Fragment key={r.key}>
+            {(selected || hovered) && (
+              <Line
+                points={points}
+                closed
+                fill={colors.accentSoft}
+                stroke={selected ? colors.accent : 'transparent'}
+                strokeWidth={selected ? 1.5 : 0}
+                dash={[6, 4]}
+                perfectDrawEnabled={false}
+                globalCompositeOperation={op}
+              />
+            )}
+            {img ? (
+              <Line
+                points={points}
+                closed
+                fillPatternImage={img}
+                fillPatternRepeat="repeat"
+                fillPatternScale={{ x: k, y: k }}
+                fillPatternX={view.ox}
+                fillPatternY={view.oy}
+                opacity={0.92}
+                perfectDrawEnabled={false}
+                globalCompositeOperation={op}
+              />
+            ) : (
+              <Line
+                points={points}
+                closed
+                fill={finish?.colorHex ?? colors.room}
+                opacity={finish ? 0.8 : 1}
+                perfectDrawEnabled={false}
+                globalCompositeOperation={op}
+              />
+            )}
+          </Fragment>
         );
       })}
+    </>
+  );
+}
+
+/** Thin colour strips along painted wall faces. */
+export function PaintStrips({ walls, view }: { walls: readonly Wall[]; view: View }) {
+  const strips: { key: string; pts: Vec2[]; color: string }[] = [];
+  for (const w of walls) {
+    const dir = wallDirection(w);
+    const n = perp(dir);
+    for (const [side, sign] of [
+      ['a', 1],
+      ['b', -1],
+    ] as const) {
+      const color = getMaterial(side === 'a' ? w.finishA : w.finishB)?.colorHex;
+      if (!color) continue;
+      const off = scale(n, sign * (w.thickness / 2 - 2.5 / view.s));
+      strips.push({ key: `${w.id}${side}`, pts: [add(w.start, off), add(w.end, off)], color });
+    }
+  }
+  return (
+    <>
+      {strips.map((s) => (
+        <Line
+          key={s.key}
+          points={flat(s.pts, view)}
+          stroke={s.color}
+          strokeWidth={4}
+          lineCap="butt"
+        />
+      ))}
     </>
   );
 }
@@ -72,12 +141,26 @@ export function RoomLabels({
     <>
       {rooms.map((r) => {
         const p = toScreen(r.labelAt, view);
+        const area = formatArea(r.area, units);
+        const w = Math.max(r.name.length * 7.4, area.length * 6.9) + 20;
         return (
           <Group key={r.key} x={p.x} y={p.y}>
+            <Rect
+              x={-w / 2}
+              y={-21}
+              width={w}
+              height={40}
+              cornerRadius={10}
+              fill={colors.surface}
+              opacity={0.82}
+              shadowColor="black"
+              shadowOpacity={0.12}
+              shadowBlur={6}
+            />
             <Text
               text={r.name}
               x={-90}
-              y={-15}
+              y={-14}
               width={180}
               align="center"
               fontFamily={FONT_SANS}
@@ -86,7 +169,7 @@ export function RoomLabels({
               fill={colors.fg}
             />
             <Text
-              text={formatArea(r.area, units)}
+              text={area}
               x={-90}
               y={3}
               width={180}
