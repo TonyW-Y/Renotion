@@ -1,6 +1,7 @@
 import { Environment, Grid } from '@react-three/drei';
 import { Canvas, useThree, type RootState } from '@react-three/fiber';
 import {
+  ArrowLeft,
   Footprints,
   Layers2,
   Map as MapIcon,
@@ -143,6 +144,18 @@ export default function Viewer3D() {
   const cuts = useMemo(() => wallEndCuts(plan.walls), [plan.walls]);
   const locked = usePointerLocked();
 
+  // Esc releases the mouse first; a second Esc (or the button) leaves walk mode.
+  useEffect(() => {
+    if (mode !== 'walk' || locked) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMode('orbit');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [mode, locked, setMode]);
+
   const bounds = useMemo(() => boundsOf(plan), [plan]);
   const hasWalls = plan.walls.length > 0;
 
@@ -254,7 +267,7 @@ export default function Viewer3D() {
       </Canvas>
 
       {/* Toolbar */}
-      <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">
+      <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
         <div className="pointer-events-auto flex items-center gap-1 rounded-xl bg-surface/85 p-1 shadow-float backdrop-blur-xl">
           {project.planned && (
             <>
@@ -325,7 +338,7 @@ export default function Viewer3D() {
       )}
 
       {mode === 'walk' && !locked && hasWalls && (
-        <div className="absolute inset-0 flex items-center justify-center bg-bg/30 backdrop-blur-[2px]">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-bg/30 backdrop-blur-[2px]">
           <button
             id="walk-start"
             type="button"
@@ -341,6 +354,16 @@ export default function Viewer3D() {
               <Kbd>S</Kbd>
               <Kbd>D</Kbd> move · <Kbd>Shift</Kbd> run · <Kbd>Esc</Kbd> release
             </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('orbit');
+            }}
+            className="flex items-center gap-1.5 rounded-full bg-surface/90 px-3.5 py-1.5 text-xs font-medium text-fg-muted shadow-float backdrop-blur-xl transition-colors hover:text-fg"
+          >
+            <ArrowLeft className="size-3.5" /> Back to orbit
+            <Kbd>Esc</Kbd>
           </button>
         </div>
       )}
