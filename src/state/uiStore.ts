@@ -6,6 +6,7 @@ import type { UnitSystem } from '@/core/units';
 export type Tool = 'select' | 'wall' | 'door' | 'window' | 'delete';
 export type ViewMode = '2d' | 'split' | '3d';
 export type Theme = 'dark' | 'light';
+export type CameraMode = 'orbit' | 'top' | 'walk';
 export type SelectionKind = 'wall' | 'opening' | 'room' | 'furniture';
 
 export interface Selection {
@@ -31,6 +32,9 @@ export interface UiState {
   theme: Theme;
   units: UnitSystem;
   rightPanelOpen: boolean;
+  /** 3D camera mode. */
+  cameraMode: CameraMode;
+  showCeilings: boolean;
   zoom: number;
   /** Screen offset (px) of the plan origin from the canvas centre. */
   pan: Vec2;
@@ -44,6 +48,8 @@ export interface UiState {
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
   setUnits: (units: UnitSystem) => void;
+  setCameraMode: (mode: CameraMode) => void;
+  setShowCeilings: (show: boolean) => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
   setZoom: (zoom: number) => void;
@@ -66,6 +72,8 @@ export const useUiStore = create<UiState>()(
       theme: initialTheme(),
       units: 'metric',
       rightPanelOpen: true,
+      cameraMode: 'orbit',
+      showCeilings: false,
       zoom: 1,
       pan: { x: 0, y: 0 },
       cursor: null,
@@ -86,6 +94,12 @@ export const useUiStore = create<UiState>()(
       },
       setUnits: (units) => {
         set({ units });
+      },
+      setCameraMode: (cameraMode) => {
+        set({ cameraMode });
+      },
+      setShowCeilings: (showCeilings) => {
+        set({ showCeilings });
       },
       toggleRightPanel: () => {
         set((s) => ({ rightPanelOpen: !s.rightPanelOpen }));
