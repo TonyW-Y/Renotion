@@ -5,6 +5,7 @@ import { IconButton } from '@/components/ui';
 import { FURNITURE, FURNITURE_CATEGORIES, type FurnitureCategory } from '@/core/furniture/catalog';
 import { formatLength } from '@/core/units';
 import { cn } from '@/lib/cn';
+import { formatMoneyWhole } from '@/lib/format';
 import { useUiStore } from '@/state/uiStore';
 import { setDraggingModel } from './dragState';
 import { TopView } from './TopView';
@@ -12,6 +13,9 @@ import { TopView } from './TopView';
 export const FURNITURE_MIME = 'application/x-renotion-furniture';
 
 /** Floating catalogue shown while the furniture tool is active. */
+/** Short tab labels so all categories fit in two tidy rows. */
+const SHORT: Partial<Record<FurnitureCategory, string>> = { Bedroom: 'Bed', Bathroom: 'Bath' };
+
 export function FurnitureCatalog() {
   const tool = useUiStore((s) => s.tool);
   const placing = useUiStore((s) => s.placing);
@@ -44,27 +48,25 @@ export function FurnitureCatalog() {
               <X className="size-3.5" />
             </IconButton>
           </header>
-          <div
-            className="flex shrink-0 [scrollbar-width:none] gap-1 overflow-x-auto px-3 pb-2"
-            role="tablist"
-          >
+          <div className="grid shrink-0 grid-cols-4 gap-1 px-3 pb-2" role="tablist">
             {FURNITURE_CATEGORIES.map((c) => (
               <button
                 key={c}
                 type="button"
                 role="tab"
                 aria-selected={c === category}
+                aria-label={c}
                 onClick={() => {
                   setCategory(c);
                 }}
                 className={cn(
-                  'h-7 shrink-0 rounded-full px-3 text-xs font-medium transition-colors',
+                  'h-7 rounded-full px-1 text-xs font-medium transition-colors',
                   c === category
                     ? 'bg-fg text-bg'
                     : 'text-fg-muted hover:bg-fg/[0.06] hover:text-fg',
                 )}
               >
-                {c}
+                {SHORT[c] ?? c}
               </button>
             ))}
           </div>
@@ -88,7 +90,7 @@ export function FurnitureCatalog() {
                   setPlacing(placing === m.id ? null : m.id);
                 }}
                 className={cn(
-                  'group flex cursor-grab flex-col items-center gap-1.5 rounded-xl bg-fg/[0.03] p-2 text-center shadow-[inset_0_0_0_1px_var(--border)] transition-all hover:bg-fg/[0.06] active:cursor-grabbing',
+                  'group relative flex cursor-grab flex-col items-center gap-1.5 rounded-xl bg-fg/[0.03] p-2 text-center shadow-[inset_0_0_0_1px_var(--border)] transition-all hover:bg-fg/[0.06] active:cursor-grabbing',
                   placing === m.id && 'bg-accent-soft shadow-[inset_0_0_0_1.5px_var(--accent)]',
                 )}
               >
@@ -102,6 +104,9 @@ export function FurnitureCatalog() {
                 <span className="font-mono text-[10px] text-fg-subtle">
                   {formatLength(m.width, units, { decimals: 1, fraction: 2 })} ×{' '}
                   {formatLength(m.depth, units, { decimals: 1, fraction: 2 })}
+                </span>
+                <span className="tabular absolute top-1.5 right-1.5 rounded-full bg-bg/70 px-1.5 py-0.5 font-mono text-[10px] text-fg-muted backdrop-blur-sm">
+                  {formatMoneyWhole(m.price)}
                 </span>
               </button>
             ))}
