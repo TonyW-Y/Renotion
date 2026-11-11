@@ -70,19 +70,28 @@ export interface Plan {
   furniture: FurnitureItem[];
 }
 
-export type MaterialCategory = 'paint' | 'flooring' | 'tile' | 'ceiling';
-export type MaterialUnit = 'gallon' | 'sqft' | 'sqm' | 'box';
+export type MaterialCategory =
+  'paint' | 'flooring' | 'tile' | 'ceiling' | 'trim' | 'drywall' | 'door' | 'window' | 'labour';
+
+/** Purchase unit. Lengths/areas are converted from metres at estimate time. */
+export type MaterialUnit = 'gallon' | 'sqft' | 'sqm' | 'box' | 'lft' | 'sheet' | 'each';
 
 export interface Material {
   id: ID;
   name: string;
   category: MaterialCategory;
+  /** Flat colour for paint; also the 2D swatch / fallback colour. */
   colorHex?: string;
+  /** Folder under /assets/textures. */
   textureSet?: string;
-  /** CAD. */
+  /** Real-world size (m) covered by one texture tile. */
+  tileSize?: number;
+  /** CAD per unit — a rough default, overridable per project. */
   costPerUnit: number;
   unit: MaterialUnit;
+  /** Paint: m² per gallon. Box / sheet: m² per box / sheet. */
   coverage?: number;
+  /** e.g. 0.10 for flooring, 0.15 for tile. */
   wasteFactor: number;
 }
 
