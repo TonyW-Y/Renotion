@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { EstimateView } from '@/features/estimate/EstimateView';
 import { FurnitureCatalog } from '@/features/furniture/FurnitureCatalog';
+import { ScheduleView } from '@/features/tasks/ScheduleView';
 import { useUiStore } from '@/state/uiStore';
 import { useProjectSync } from '@/state/useProjectSync';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -37,7 +38,7 @@ export function EditorShell() {
           </>
         ) : (
           <main className="min-w-0 flex-1">
-            <EstimateView />
+            {section === 'estimate' ? <EstimateView /> : <ScheduleView />}
           </main>
         )}
       </div>
