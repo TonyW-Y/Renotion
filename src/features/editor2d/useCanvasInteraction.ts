@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
+  setFurnitureProps,
   addOpening,
   addWall,
   applyCommand,
@@ -10,6 +11,8 @@ import {
   translateWall,
   type Command,
 } from '@/core/commands';
+import { FURNITURE_BY_ID } from '@/core/furniture/catalog';
+import { canPlaceFurniture, furnitureFootprint } from '@/core/furniture/placement';
 import { cornerAt, hitTest } from '@/core/geometry/hitTest';
 import { snapPoint, snapToGrid, type SnapResult } from '@/core/geometry/snapping';
 import { distance, equals, pointToSegmentDistance, sub } from '@/core/geometry/vec2';
@@ -23,11 +26,14 @@ import type { ResolvedRoom } from '@/core/rooms';
 import {
   DEFAULT_DOOR,
   DEFAULT_WINDOW,
+  type FurnitureItem,
   type Opening,
   type Plan,
   type Vec2,
   type Wall,
 } from '@/core/types';
+import { setDraggingModel, getDraggingModel } from '@/features/furniture/dragState';
+import { FURNITURE_MIME } from '@/features/furniture/FurnitureCatalog';
 import { createId } from '@/lib/id';
 import { usePlanStore } from '@/state/planStore';
 import { useUiStore, type Selection } from '@/state/uiStore';
@@ -42,7 +48,43 @@ type Drag =
   | { kind: 'maybe-pan'; sx: number; sy: number; pan0: Vec2 }
   | { kind: 'corner'; sx: number; sy: number; at: Vec2; to: Vec2; moved: boolean }
   | { kind: 'wall'; sx: number; sy: number; wallId: string; w0: Vec2; delta: Vec2; moved: boolean }
-  | { kind: 'opening'; sx: number; sy: number; openingId: string; offset: number; moved: boolean };
+  | { kind: 'opening'; sx: number; sy: number; openingId: string; offset: number; moved: boolean }
+  | {
+      kind: 'furniture';
+      sx: number;
+      sy: number;
+      itemId: string;
+      grab: Vec2;
+      position: Vec2;
+      moved: boolean;
+    }
+  | { kind: 'rotate'; sx: number; sy: number; itemId: string; rotation: number; moved: boolean };
+
+const ROTATE_HANDLE_GAP = 0.35;
+const FURNITURE_GRID = 0.05;
+const snapAngleRad = (a: number, stepDeg: number) => {
+  const step = (stepDeg * Math.PI) / 180;
+  return Math.round(a / step) * step;
+};
+
+/** Where the rotate handle of a furniture item sits (in front of it). */
+export function rotateHandleAt(
+  item: Pick<FurnitureItem, 'modelId' | 'position' | 'rotation'>,
+): Vec2 | null {
+  const m = FURNITURE_BY_ID.get(item.modelId);
+  if (!m) return null;
+  const r = m.depth / 2 + ROTATE_HANDLE_GAP;
+  // Local front is −y in plan space at rotation 0.
+  return {
+    x: item.position.x + Math.sin(item.rotation) * r,
+    y: item.position.y - Math.cos(item.rotation) * r,
+  };
+}
+
+export interface FurnitureGhost {
+  item: FurnitureItem;
+  valid: boolean;
+}
 
 export interface WallChain {
   anchor: Vec2;
@@ -68,6 +110,10 @@ export interface CanvasInteraction {
   /** Snapped pointer for the wall tool. */
   snap: SnapResult | null;
   ghost: Ghost | null;
+  furnitureGhost: FurnitureGhost | null;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave: () => void;
   hoverCorner: Vec2 | null;
   activeCorner: Vec2 | null;
   cursor: string;
@@ -93,6 +139,9 @@ export function useCanvasInteraction(
   const [chain, setChain] = useState<WallChain | null>(null);
   const [snap, setSnap] = useState<SnapResult | null>(null);
   const [ghost, setGhost] = useState<Ghost | null>(null);
+  const [furnitureGhost, setFurnitureGhost] = useState<FurnitureGhost | null>(null);
+  const placing = useUiStore((s) => s.placing);
+  const placeRotation = useUiStore((s) => s.placeRotation);
   const [hoverCorner, setHoverCorner] = useState<Vec2 | null>(null);
   const [space, setSpace] = useState(false);
 
@@ -107,6 +156,7 @@ export function useCanvasInteraction(
     setChain(null);
     setSnap(null);
     setGhost(null);
+    setFurnitureGhost(null);
   }
 
   // Keyboard: Escape/Enter finish a chain; Space enables temporary panning.
@@ -186,7 +236,22 @@ export function useCanvasInteraction(
     return { opening, wall, valid };
   };
 
-  const hitAt = (world: Vec2) => hitTest(plan, world, { tolerance: pickTol, rooms });
+  const footprintOf = (id: string) => {
+    const f = plan.furniture.find((x) => x.id === id);
+    return f ? furnitureFootprint(f) : null;
+  };
+  const hitAt = (world: Vec2) =>
+    hitTest(plan, world, { tolerance: pickTol, rooms, furnitureFootprint: footprintOf });
+
+  const ghostItem = (modelId: string, world: Vec2, rotation: number): FurnitureGhost => {
+    const item: FurnitureItem = {
+      id: 'ghost',
+      modelId,
+      position: snapToGrid(world, FURNITURE_GRID),
+      rotation,
+    };
+    return { item, valid: canPlaceFurniture(item, plan) };
+  };
 
   const pending: Command | null = useMemo(() => {
     if (!drag) return null;
@@ -199,6 +264,14 @@ export function useCanvasInteraction(
           : null;
       case 'opening':
         return drag.moved ? moveOpening(plan, drag.openingId, drag.offset) : null;
+      case 'furniture':
+        return drag.moved
+          ? setFurnitureProps(plan, drag.itemId, { position: drag.position })
+          : null;
+      case 'rotate':
+        return drag.moved
+          ? setFurnitureProps(plan, drag.itemId, { rotation: drag.rotation })
+          : null;
       default:
         return null;
     }
@@ -245,14 +318,41 @@ export function useCanvasInteraction(
         }
         return;
       }
+      case 'furniture': {
+        if (!placing) return;
+        const g = ghostItem(placing, world, placeRotation);
+        if (g.valid) execute({ type: 'addFurniture', item: { ...g.item, id: createId() } });
+        return;
+      }
       case 'delete': {
         const hit = hitAt(world);
         if (hit?.kind === 'wall') execute(deleteWall(plan, hit.id));
         if (hit?.kind === 'opening') execute(deleteOpening(plan, hit.id));
+        if (hit?.kind === 'furniture') {
+          const index = plan.furniture.findIndex((f) => f.id === hit.id);
+          const item = plan.furniture[index];
+          if (item) execute({ type: 'deleteFurniture', item, index });
+        }
         select(null);
         return;
       }
       case 'select': {
+        const { selection } = useUiStore.getState();
+        if (selection?.kind === 'furniture') {
+          const item = plan.furniture.find((f) => f.id === selection.id);
+          const handle = item && rotateHandleAt(item);
+          if (item && handle && distance(handle, world) <= CORNER_PICK_PX / view.s) {
+            setDrag({
+              kind: 'rotate',
+              sx: s.x,
+              sy: s.y,
+              itemId: item.id,
+              rotation: item.rotation,
+              moved: false,
+            });
+            return;
+          }
+        }
         const corner = cornerAt(plan, world, CORNER_PICK_PX / view.s);
         const hit = hitAt(world);
         if (corner) {
@@ -271,6 +371,19 @@ export function useCanvasInteraction(
               offset: o.offset,
               moved: false,
             });
+        } else if (hit?.kind === 'furniture') {
+          const f = plan.furniture.find((x) => x.id === hit.id);
+          if (f) {
+            setDrag({
+              kind: 'furniture',
+              sx: s.x,
+              sy: s.y,
+              itemId: f.id,
+              grab: sub(f.position, world),
+              position: f.position,
+              moved: false,
+            });
+          }
         } else if (hit?.kind === 'wall') {
           setDrag({
             kind: 'wall',
@@ -316,6 +429,34 @@ export function useCanvasInteraction(
           setDrag({ ...drag, delta: snapToGrid(sub(world, drag.w0), 0.05), moved: true });
           return;
         }
+        case 'furniture': {
+          if (!moved && !drag.moved) return;
+          const f = plan.furniture.find((x) => x.id === drag.itemId);
+          if (!f) return;
+          const position = snapToGrid(
+            { x: world.x + drag.grab.x, y: world.y + drag.grab.y },
+            FURNITURE_GRID,
+          );
+          setDrag(
+            canPlaceFurniture({ ...f, position }, plan)
+              ? { ...drag, position, moved: true }
+              : { ...drag, moved: true },
+          );
+          return;
+        }
+        case 'rotate': {
+          const f = plan.furniture.find((x) => x.id === drag.itemId);
+          if (!f) return;
+          // Handle points along local front (−y at rotation 0) → angle from item to cursor.
+          const raw = Math.atan2(world.x - f.position.x, -(world.y - f.position.y));
+          const rotation = e.shiftKey ? raw : snapAngleRad(raw, 15);
+          setDrag(
+            canPlaceFurniture({ ...f, rotation }, plan)
+              ? { ...drag, rotation, moved: true }
+              : { ...drag, moved: true },
+          );
+          return;
+        }
         case 'opening': {
           if (!moved && !drag.moved) return;
           const o = plan.openings.find((x) => x.id === drag.openingId);
@@ -341,6 +482,9 @@ export function useCanvasInteraction(
       case 'door':
       case 'window':
         setGhost(ghostFor(world, tool));
+        return;
+      case 'furniture':
+        setFurnitureGhost(placing ? ghostItem(placing, world, placeRotation) : null);
         return;
       case 'select':
       case 'delete': {
@@ -373,6 +517,7 @@ export function useCanvasInteraction(
     if (!drag) {
       setSnap(null);
       setGhost(null);
+      setFurnitureGhost(null);
       setHoverCorner(null);
       useUiStore.getState().setHover(null);
     }
@@ -384,7 +529,11 @@ export function useCanvasInteraction(
     : space
       ? 'grab'
       : tool === 'select'
-        ? drag?.kind === 'corner' || drag?.kind === 'wall' || drag?.kind === 'opening'
+        ? drag?.kind === 'corner' ||
+          drag?.kind === 'wall' ||
+          drag?.kind === 'opening' ||
+          drag?.kind === 'furniture' ||
+          drag?.kind === 'rotate'
           ? 'grabbing'
           : hoverCorner
             ? 'move'
@@ -409,6 +558,45 @@ export function useCanvasInteraction(
     chain,
     snap,
     ghost,
+    furnitureGhost:
+      tool === 'furniture' && furnitureGhost
+        ? { ...furnitureGhost, item: { ...furnitureGhost.item, rotation: placeRotation } }
+        : furnitureGhost,
+    onDragOver: (e) => {
+      const modelId = getDraggingModel();
+      if (!modelId || !e.dataTransfer.types.includes(FURNITURE_MIME)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      const r = e.currentTarget.getBoundingClientRect();
+      setFurnitureGhost(
+        ghostItem(
+          modelId,
+          toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }, view),
+          placeRotation,
+        ),
+      );
+    },
+    onDrop: (e) => {
+      const modelId = e.dataTransfer.getData(FURNITURE_MIME) || getDraggingModel();
+      setDraggingModel(null);
+      if (!modelId) return;
+      e.preventDefault();
+      const r = e.currentTarget.getBoundingClientRect();
+      const g = ghostItem(
+        modelId,
+        toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }, view),
+        placeRotation,
+      );
+      setFurnitureGhost(null);
+      if (!g.valid) return;
+      const id = createId();
+      execute({ type: 'addFurniture', item: { ...g.item, id } });
+      useUiStore.getState().setTool('select');
+      useUiStore.getState().select({ kind: 'furniture', id });
+    },
+    onDragLeave: () => {
+      setFurnitureGhost(null);
+    },
     hoverCorner,
     activeCorner: drag?.kind === 'corner' && drag.moved ? drag.to : null,
     cursor,

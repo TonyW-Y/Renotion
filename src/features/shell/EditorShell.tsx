@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { EstimateView } from '@/features/estimate/EstimateView';
+import { FurnitureCatalog } from '@/features/furniture/FurnitureCatalog';
 import { useUiStore } from '@/state/uiStore';
 import { useProjectSync } from '@/state/useProjectSync';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -30,6 +31,7 @@ export function EditorShell() {
               <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center sm:inset-x-auto sm:top-0 sm:bottom-0 sm:left-3 sm:items-center">
                 <ToolRail />
               </div>
+              <FurnitureCatalog />
             </main>
             <PropertiesPanel />
           </>

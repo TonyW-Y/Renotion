@@ -6,6 +6,7 @@ import { FURNITURE, FURNITURE_CATEGORIES, type FurnitureCategory } from '@/core/
 import { formatLength } from '@/core/units';
 import { cn } from '@/lib/cn';
 import { useUiStore } from '@/state/uiStore';
+import { setDraggingModel } from './dragState';
 import { TopView } from './TopView';
 
 export const FURNITURE_MIME = 'application/x-renotion-furniture';
@@ -78,6 +79,10 @@ export function FurnitureCatalog() {
                 onDragStart={(e) => {
                   e.dataTransfer.setData(FURNITURE_MIME, m.id);
                   e.dataTransfer.effectAllowed = 'copy';
+                  setDraggingModel(m.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingModel(null);
                 }}
                 onClick={() => {
                   setPlacing(placing === m.id ? null : m.id);

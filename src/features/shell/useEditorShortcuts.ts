@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { deleteFurniture, deleteOpening, deleteWall } from '@/core/commands';
+import { duplicateFurniture, rotateFurniture } from '@/features/furniture/actions';
 import { selectActivePlan, usePlanStore } from '@/state/planStore';
 import { useUiStore } from '@/state/uiStore';
 import { toolByShortcut, VIEW_SHORTCUTS } from './tools';
@@ -44,6 +45,10 @@ export function useEditorShortcuts(): void {
         else usePlanStore.getState().undo();
         return;
       }
+      if (mod && key === 'd') {
+        if (duplicateFurniture()) e.preventDefault();
+        return;
+      }
       if (mod && key === 'y') {
         e.preventDefault();
         usePlanStore.getState().redo();
@@ -58,10 +63,18 @@ export function useEditorShortcuts(): void {
         deleteSelection();
         return;
       }
+      if (key === 'r') {
+        if (rotateFurniture(((e.shiftKey ? 15 : 90) * Math.PI) / 180)) {
+          e.preventDefault();
+          return;
+        }
+      }
       if (e.key === 'Escape') {
         // The active canvas tool handles Escape first (e.g. finishing a wall chain).
         if (e.defaultPrevented) return;
-        if (useUiStore.getState().selection) select(null);
+        const ui = useUiStore.getState();
+        if (ui.placing) ui.setPlacing(null);
+        else if (ui.selection) select(null);
         else setTool('select');
         return;
       }

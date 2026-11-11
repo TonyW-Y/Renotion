@@ -22,6 +22,7 @@ import {
   WallShapes,
 } from './shapes';
 import { useCanvasInteraction } from './useCanvasInteraction';
+import { FurnitureGhostShape, FurnitureShapes, RotateHandle } from './furnitureShapes';
 import { usePatternImages } from './usePatternImages';
 import { useThemeColors } from './useThemeColors';
 import { getMaterial } from '@/core/estimate/defaultCosts';
@@ -110,6 +111,10 @@ export function PlanCanvas() {
     selection?.kind === 'opening'
       ? previewPlan.openings.find((o) => o.id === selection.id)
       : undefined;
+  const selectedFurniture =
+    selection?.kind === 'furniture'
+      ? previewPlan.furniture.find((f) => f.id === selection.id)
+      : undefined;
   const corner = ix.activeCorner;
   const cornerWalls = corner
     ? previewPlan.walls.filter(
@@ -140,6 +145,9 @@ export function PlanCanvas() {
       onPointerLeave={ix.onPointerLeave}
       onContextMenu={ix.onContextMenu}
       onDoubleClick={ix.onDoubleClick}
+      onDragOver={ix.onDragOver}
+      onDrop={ix.onDrop}
+      onDragLeave={ix.onDragLeave}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,var(--canvas)_100%)] opacity-70" />
 
@@ -180,6 +188,14 @@ export function PlanCanvas() {
             <OpeningShapes
               openings={previewPlan.openings}
               walls={previewPlan.walls}
+              view={view}
+              colors={colors}
+              selection={selection}
+              hover={hover}
+              danger={tool === 'delete'}
+            />
+            <FurnitureShapes
+              items={previewPlan.furniture}
               view={view}
               colors={colors}
               selection={selection}
@@ -290,6 +306,19 @@ export function PlanCanvas() {
                 kind={ix.snap.kind}
                 at={toScreen(ix.snap.point, view)}
                 color={colors.accent}
+              />
+            )}
+
+            {/* Furniture rotate handle + placement ghost */}
+            {selectedFurniture && tool === 'select' && (
+              <RotateHandle item={selectedFurniture} view={view} colors={colors} />
+            )}
+            {ix.furnitureGhost && (
+              <FurnitureGhostShape
+                item={ix.furnitureGhost.item}
+                valid={ix.furnitureGhost.valid}
+                view={view}
+                colors={colors}
               />
             )}
 
