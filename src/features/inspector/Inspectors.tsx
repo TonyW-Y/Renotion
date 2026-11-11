@@ -418,6 +418,7 @@ export function PlanOverview({
       <PropRow label="Walls" value={plan.walls.length} />
       <PropRow label="Doors · windows" value={`${doors} · ${plan.openings.length - doors}`} />
       <PropRow label="Rooms" value={rooms.length} />
+      <PropRow label="Furniture" value={plan.furniture.length} />
       <PropRow label="Floor area" value={formatArea(totalArea, units)} />
     </PanelSection>
   );
