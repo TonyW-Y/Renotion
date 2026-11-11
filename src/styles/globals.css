@@ -28,6 +28,8 @@
   --grid-minor: rgb(120 150 200 / 0.06);
   --grid-major: rgb(120 150 200 / 0.12);
   --canvas: #0c0f13;
+  --wall: #c9d2df;
+  --room: rgb(79 140 255 / 0.07);
   --highlight: rgb(255 255 255 / 0.04);
   --shadow-color: 0 0% 0%;
 }
@@ -53,6 +55,8 @@
   --grid-minor: rgb(40 70 130 / 0.06);
   --grid-major: rgb(40 70 130 / 0.12);
   --canvas: #fafbfc;
+  --wall: #253041;
+  --room: rgb(47 107 255 / 0.06);
   --highlight: rgb(255 255 255 / 0.8);
   --shadow-color: 220 40% 20%;
 }
