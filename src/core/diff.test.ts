@@ -216,3 +216,40 @@ describe('diffPlans: door and window designs', () => {
     expect(diffPlans(room(), planned).map((e) => e.type)).toEqual(['openingAdded']);
   });
 });
+
+describe('diffPlans: tints and textured wall finishes', () => {
+  const key = () => detectRooms(room().walls)[0]?.key ?? '';
+
+  it('treats a new floor colour on the same material as a floor change', () => {
+    const base = run(
+      room(),
+      setRoomMeta(null, { key: key(), name: 'Den', floorMaterial: 'oak-hardwood' }),
+    );
+    const planned = run(
+      base,
+      setRoomMeta(
+        { key: key(), name: 'Den', floorMaterial: 'oak-hardwood' },
+        { key: key(), name: 'Den', floorMaterial: 'oak-hardwood', floorTint: '#7a8f6a' },
+      ),
+    );
+    expect(diffPlans(base, planned)).toEqual([
+      expect.objectContaining({ type: 'floorChanged', to: 'oak-hardwood', tint: '#7a8f6a' }),
+    ]);
+  });
+
+  it('reports a textured wall finish and a tint-only change', () => {
+    const base = run(room(), setWallProps(room(), 'w0', { finishA: 'red-brick' }));
+    const recoloured = run(base, setWallProps(base, 'w0', { tintA: '#f4f1ea' }));
+    expect(diffPlans(base, recoloured)).toEqual([
+      expect.objectContaining({
+        type: 'wallPainted',
+        to: 'red-brick',
+        tint: '#f4f1ea',
+        tintOnly: true,
+      }),
+    ]);
+    const brick = diffPlans(room(), base);
+    expect(brick).toEqual([expect.objectContaining({ type: 'wallPainted', to: 'red-brick' })]);
+    expect(brick[0]).not.toHaveProperty('tintOnly');
+  });
+});

@@ -1,4 +1,5 @@
 import type { ChangeEvent } from '../diff';
+import { getMaterial } from '../estimate/defaultCosts';
 import { openingStyleInfo } from '../openings';
 import { halfDays, PHASE_ORDER, TEMPLATES, type TaskPhase, type TaskTemplate } from './templates';
 
@@ -52,7 +53,9 @@ function chain(
  */
 export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
   const tasks: TaskSpec[] = [];
-  const painted = new Map<string, { roomKey: string | null; roomName: string; area: number }>();
+  interface RoomArea { roomKey: string | null; roomName: string; area: number }
+  const paintedRooms = new Map<string, RoomArea>();
+  const finished = new Map<string, RoomArea>();
   const furnished = new Map<string, { roomKey: string | null; roomName: string; pieces: number }>();
 
   for (const e of events) {
@@ -64,6 +67,8 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
         break;
       case 'wallPainted':
         for (const s of e.shares) {
+          const textured = getMaterial(e.to)?.category === 'wallFinish' && !e.tintOnly;
+          const painted = textured ? finished : paintedRooms;
           const k = roomId(s.roomKey);
           const cur = painted.get(k) ?? { roomKey: s.roomKey, roomName: s.roomName, area: 0 };
           cur.area += s.area;
@@ -125,7 +130,10 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
     }
   }
 
-  for (const [k, p] of painted) {
+  for (const [k, p] of finished) {
+    tasks.push(...chain(`finish:${k}`, 'roomWallFinished', TEMPLATES.roomWallFinished, p, p.area));
+  }
+  for (const [k, p] of paintedRooms) {
     tasks.push(...chain(`paint:${k}`, 'roomPainted', TEMPLATES.roomPainted, p, p.area));
   }
 
@@ -147,7 +155,11 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
   for (const t of tasks) {
     if (t.phase === 'drywall') addDeps(t, demolition);
     if (t.phase === 'prep' || t.phase === 'paint') {
-      if (t.templateKey.startsWith('roomPainted') || t.templateKey.startsWith('wallRemoved.paint'))
+      if (
+        t.templateKey.startsWith('roomPainted') ||
+        t.templateKey.startsWith('roomWallFinished') ||
+        t.templateKey.startsWith('wallRemoved.paint')
+      )
         addDeps(t, drywall);
     }
     // Furniture goes in once everything else in that room is done.

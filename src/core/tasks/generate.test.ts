@@ -115,3 +115,30 @@ describe('generateTasks: doors and windows', () => {
     );
   });
 });
+
+describe('generateTasks: wall finishes', () => {
+  it('adds an install task for textured finishes and paints tint-only changes', () => {
+    const tasks = generateTasks([
+      {
+        type: 'wallPainted',
+        wallId: 'w1',
+        side: 'a',
+        from: null,
+        to: 'subway-tile',
+        shares: [{ ...room, area: 8 }],
+      },
+      {
+        type: 'wallPainted',
+        wallId: 'w2',
+        side: 'a',
+        from: 'red-brick',
+        to: 'red-brick',
+        tint: '#ffffff',
+        tintOnly: true,
+        shares: [{ ...room, area: 8 }],
+      },
+    ]);
+    expect(tasks.map((t) => t.templateKey)).toContain('roomWallFinished.install');
+    expect(tasks.map((t) => t.templateKey)).toContain('roomPainted.paint');
+  });
+});

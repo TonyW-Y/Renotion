@@ -56,7 +56,10 @@ export const halfDays = (d: number): number => Math.max(0.5, Math.ceil(d * 2) / 
  * the previous one). Durations are rough single-crew estimates.
  */
 export const TEMPLATES: Record<
-  Exclude<ChangeType, 'wallPainted' | 'furnitureAdded'> | 'roomPainted' | 'roomFurnished',
+  | Exclude<ChangeType, 'wallPainted' | 'furnitureAdded'>
+  | 'roomPainted'
+  | 'roomFurnished'
+  | 'roomWallFinished',
   readonly TaskTemplate[]
 > = {
   floorChanged: [
@@ -113,6 +116,15 @@ export const TEMPLATES: Record<
   ],
   openingRefinished: [
     { step: 'refinish', title: 'Sand & refinish', phase: 'paint', duration: 0.5 },
+  ],
+  roomWallFinished: [
+    { step: 'prep', title: 'Prep walls for new finish', phase: 'prep', duration: 0.5 },
+    {
+      step: 'install',
+      title: 'Install wall finish',
+      phase: 'paint',
+      duration: (m2) => halfDays(m2 / 8),
+    },
   ],
   roomFurnished: [
     {

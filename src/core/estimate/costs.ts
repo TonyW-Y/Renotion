@@ -1,7 +1,7 @@
 import type { ChangeEvent } from '../diff';
 import type { Material, MaterialUnit } from '../types';
 import { openingMaterialId } from '../openings';
-import { furnitureMaterialId, getMaterial } from './defaultCosts';
+import { customPaintId, furnitureMaterialId, getMaterial, SQFT_PER_SQM } from './defaultCosts';
 import {
   baseboardMetres,
   drywallSheets,
@@ -19,7 +19,8 @@ export type CostCategory =
   | 'doors'
   | 'windows'
   | 'demolition'
-  | 'furniture';
+  | 'furniture'
+  | 'wallFinish';
 
 export const CATEGORY_LABELS: Record<CostCategory, string> = {
   flooring: 'Flooring',
@@ -31,6 +32,7 @@ export const CATEGORY_LABELS: Record<CostCategory, string> = {
   windows: 'Windows',
   demolition: 'Demolition',
   furniture: 'Furniture',
+  wallFinish: 'Wall finishes',
 };
 
 export interface LineItem {
@@ -109,6 +111,7 @@ export function buildEstimate(
   // so ten small walls don't each round up to a whole gallon.
   const paint = new Map<string, Accumulator>();
   const drywall = new Map<string, Accumulator>();
+  const wallFinish = new Map<string, Accumulator>();
   const pool = (
     map: Map<string, Accumulator>,
     roomKey: string | null,
@@ -163,9 +166,16 @@ export function buildEstimate(
         break;
       }
       case 'wallPainted': {
-        const m = getMaterial(e.to);
+        const finish = getMaterial(e.to);
+        if (!finish) break;
+        // Recolouring an existing textured finish = painting / staining it.
+        const m =
+          finish.category === 'wallFinish' && e.tintOnly && e.tint
+            ? getMaterial(customPaintId(e.tint))
+            : finish;
         if (!m) break;
-        for (const s of e.shares) pool(paint, s.roomKey, s.roomName, m, s.area);
+        const target = m.category === 'wallFinish' ? wallFinish : paint;
+        for (const s of e.shares) pool(target, s.roomKey, s.roomName, m, s.area);
         break;
       }
       case 'wallAdded': {
@@ -223,6 +233,20 @@ export function buildEstimate(
         quantity: paintGallons(a.amount, 2, a.material.coverage),
         unit: 'gallon',
         basis: `${a.amount.toFixed(1)} m² × 2 coats`,
+      },
+      a.material,
+    );
+  }
+  for (const a of wallFinish.values()) {
+    push(
+      {
+        roomKey: a.roomKey,
+        roomName: a.roomName,
+        category: 'wallFinish',
+        description: a.material.name,
+        quantity: Math.ceil(a.amount * (1 + a.material.wasteFactor) * SQFT_PER_SQM - 1e-9),
+        unit: 'sqft',
+        basis: `${a.amount.toFixed(1)} m² of wall + ${Math.round(a.material.wasteFactor * 100)}% waste`,
       },
       a.material,
     );

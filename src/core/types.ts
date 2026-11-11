@@ -23,6 +23,9 @@ export interface Wall {
   finishA?: ID;
   /** Material id, side B (right of start→end). */
   finishB?: ID;
+  /** Recolour for a textured finish on side A / B (#hex). */
+  tintA?: string;
+  tintB?: string;
 }
 
 export type OpeningType = 'door' | 'window';
@@ -56,6 +59,8 @@ export interface RoomMeta {
   key: string;
   name: string;
   floorMaterial?: ID;
+  /** Recolour for a textured floor (#hex). */
+  floorTint?: string;
   ceilingMaterial?: ID;
 }
 
@@ -104,7 +109,8 @@ export type MaterialCategory =
   | 'door'
   | 'window'
   | 'labour'
-  | 'furniture';
+  | 'furniture'
+  | 'wallFinish';
 
 /** Purchase unit. Lengths/areas are converted from metres at estimate time. */
 export type MaterialUnit = 'gallon' | 'sqft' | 'sqm' | 'box' | 'lft' | 'sheet' | 'each';

@@ -22,6 +22,7 @@ export type ExpenseCategory =
   | 'windows'
   | 'demolition'
   | 'furniture'
+  | 'wallFinish'
   | 'labour'
   | 'other';
 

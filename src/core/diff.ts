@@ -27,6 +27,8 @@ export type ChangeEvent =
       type: 'floorChanged';
       from: ID | null;
       to: ID;
+      /** Recolour applied to the new floor (#hex). */
+      tint?: string;
       area: number;
       perimeter: number;
       doorWidths: number[];
@@ -37,6 +39,10 @@ export type ChangeEvent =
       side: 'a' | 'b';
       from: ID | null;
       to: ID;
+      /** Recolour of a textured finish (#hex). */
+      tint?: string;
+      /** Same textured finish, only its colour changed (repaint / restain it). */
+      tintOnly?: boolean;
       shares: AreaShare[];
     }
   | { type: 'wallAdded'; wallId: ID; length: number; height: number; shares: AreaShare[] }
@@ -120,12 +126,15 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
     key: r.key,
     name: r.name,
     ...(r.meta?.floorMaterial ? { floorMaterial: r.meta.floorMaterial } : {}),
+    ...(r.meta?.floorTint ? { floorTint: r.meta.floorTint } : {}),
   }));
   const matched = resolveRooms(next.rooms, baseAsMeta);
   for (const [i, room] of next.rooms.entries()) {
     const to = room.meta?.floorMaterial;
     const from = matched[i]?.meta?.floorMaterial ?? null;
-    if (!to || to === from) continue;
+    const tint = room.meta?.floorTint;
+    const sameTint = (matched[i]?.meta?.floorTint ?? null) === (tint ?? null);
+    if (!to || (to === from && sameTint)) continue;
     const doorWidths = planned.openings
       .filter((o) => o.type === 'door' && room.wallIds.includes(o.wallId))
       .map((o) => o.width);
@@ -135,6 +144,7 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
       roomName: room.name,
       from,
       to,
+      ...(tint ? { tint } : {}),
       area: room.area,
       perimeter: room.perimeter,
       doorWidths,
@@ -159,15 +169,22 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
     }
     for (const side of ['a', 'b'] as const) {
       const key = side === 'a' ? 'finishA' : 'finishB';
+      const tintKey = side === 'a' ? 'tintA' : 'tintB';
       const to = w[key];
       const from = old && !rebuilt ? (old[key] ?? null) : null;
-      if (to && to !== from) {
+      const tint = w[tintKey];
+      const oldTint = old && !rebuilt ? (old[tintKey] ?? null) : null;
+      if (!to) continue;
+      const tintOnly = to === from && (tint ?? null) !== oldTint;
+      if (to !== from || tintOnly) {
         events.push({
           type: 'wallPainted',
           wallId: w.id,
           side,
           from,
           to,
+          ...(tint ? { tint } : {}),
+          ...(tintOnly ? { tintOnly } : {}),
           shares: sideShares(next, w, side),
         });
       }

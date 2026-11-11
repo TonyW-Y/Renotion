@@ -16,6 +16,8 @@ export interface WallPatch {
   height?: number;
   finishA?: ID | null;
   finishB?: ID | null;
+  tintA?: string | null;
+  tintB?: string | null;
 }
 
 export interface OpeningPatch {

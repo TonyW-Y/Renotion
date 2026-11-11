@@ -186,3 +186,34 @@ describe('buildEstimate: door and window designs', () => {
     ]);
   });
 });
+
+describe('buildEstimate: textured wall finishes', () => {
+  const shares = [{ roomKey: 'r1', roomName: 'Den', area: 10 }];
+  it('prices textured finishes per sq ft with waste, separate from paint', () => {
+    // 10 m² × 1.12 × 10.7639 = 120.56 → 121 sq ft × $14 = $1,694
+    const est = buildEstimate([
+      { type: 'wallPainted', wallId: 'w', side: 'a', from: null, to: 'red-brick', shares },
+    ]);
+    expect(est.lines).toEqual([
+      expect.objectContaining({ category: 'wallFinish', quantity: 121, unit: 'sqft', total: 1694 }),
+    ]);
+  });
+
+  it('prices a tint-only change on a texture as paint in that colour', () => {
+    const est = buildEstimate([
+      {
+        type: 'wallPainted',
+        wallId: 'w',
+        side: 'a',
+        from: 'red-brick',
+        to: 'red-brick',
+        tint: '#f4f1ea',
+        tintOnly: true,
+        shares,
+      },
+    ]);
+    expect(est.lines).toEqual([
+      expect.objectContaining({ category: 'paint', materialId: 'paint:#f4f1ea', unit: 'gallon' }),
+    ]);
+  });
+});
