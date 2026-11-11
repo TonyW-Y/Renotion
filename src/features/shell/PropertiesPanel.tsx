@@ -30,7 +30,14 @@ export function PropertiesPanel() {
   const openingWall = opening && plan.walls.find((w) => w.id === opening.wallId);
   const room = selection?.kind === 'room' ? rooms.find((r) => r.key === selection.id) : undefined;
   const inspector = wall ? (
-    <WallInspector key={wall.id} wall={wall} plan={plan} units={units} />
+    <WallInspector
+      key={wall.id}
+      wall={wall}
+      plan={plan}
+      units={units}
+      rooms={rooms}
+      side={selection?.side}
+    />
   ) : opening && openingWall ? (
     <OpeningInspector
       key={opening.id}

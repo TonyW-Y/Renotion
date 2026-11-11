@@ -127,7 +127,9 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
   setCostOverride: (materialId, cost) => {
     set((s) => {
       const rest = Object.entries(s.project.costOverrides).filter(([k]) => k !== materialId);
-      const costOverrides = Object.fromEntries(cost === null ? rest : [...rest, [materialId, cost]]);
+      const costOverrides = Object.fromEntries(
+        cost === null ? rest : [...rest, [materialId, cost]],
+      );
       return { project: { ...s.project, costOverrides, updatedAt: new Date().toISOString() } };
     });
   },

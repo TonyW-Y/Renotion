@@ -17,6 +17,7 @@ import {
   deleteWall,
 } from '@/core/commands';
 import { canPlaceOpening, wallLength } from '@/core/geometry/walls';
+import { wallSideRooms } from '@/core/estimate/quantities';
 import type { ResolvedRoom } from '@/core/rooms';
 import type { Opening, Plan, Wall } from '@/core/types';
 import { formatArea, formatLength, type UnitSystem } from '@/core/units';
@@ -30,6 +31,8 @@ import {
   SegmentedControl,
   type SegmentOption,
 } from '@/components/ui';
+import { FloorPicker, PaintPicker } from '@/features/materials/MaterialPicker';
+import { cn } from '@/lib/cn';
 import { usePlanStore } from '@/state/planStore';
 import { useUiStore } from '@/state/uiStore';
 
@@ -67,10 +70,14 @@ export function WallInspector({
   wall,
   plan,
   units,
+  rooms,
+  side,
 }: {
   wall: Wall;
   plan: Plan;
   units: UnitSystem;
+  rooms: readonly ResolvedRoom[];
+  side?: 'a' | 'b' | undefined;
 }) {
   const execute = usePlanStore((s) => s.execute);
   const select = useUiStore((s) => s.select);
@@ -132,6 +139,7 @@ export function WallInspector({
           />
         </Field>
       </PanelSection>
+      <WallPaint wall={wall} plan={plan} rooms={rooms} side={side} />
       <div className="px-4 pb-4">
         <DeleteButton
           label="Delete wall"
@@ -141,6 +149,49 @@ export function WallInspector({
           }}
         />
       </div>
+    </>
+  );
+}
+
+function WallPaint({
+  wall,
+  plan,
+  rooms,
+  side,
+}: {
+  wall: Wall;
+  plan: Plan;
+  rooms: readonly ResolvedRoom[];
+  side?: 'a' | 'b' | undefined;
+}) {
+  const execute = usePlanStore((s) => s.execute);
+  const sides = wallSideRooms({ walls: [wall] }, rooms).get(wall.id);
+  const facing = (s: 'a' | 'b') => {
+    const names = (sides?.[s] ?? [])
+      .map((x) => (x.roomKey ? rooms.find((r) => r.key === x.roomKey)?.name : 'Exterior'))
+      .filter((n): n is string => !!n);
+    return names.length ? names.join(' & ') : 'Exterior';
+  };
+  return (
+    <>
+      {(['a', 'b'] as const).map((s) => {
+        const key = s === 'a' ? 'finishA' : 'finishB';
+        return (
+          <PanelSection
+            key={s}
+            title={`Paint · ${facing(s)}`}
+            className={cn('border-b-0 pt-0', side === s && 'rounded-xl bg-accent-soft/40')}
+          >
+            <PaintPicker
+              label={`Paint facing ${facing(s)}`}
+              value={wall[key]}
+              onChange={(id) => {
+                execute(setWallProps(plan, wall.id, { [key]: id }));
+              }}
+            />
+          </PanelSection>
+        );
+      })}
     </>
   );
 }
@@ -295,6 +346,12 @@ export function OpeningInspector({
 
 export function RoomInspector({ room, units }: { room: ResolvedRoom; units: UnitSystem }) {
   const execute = usePlanStore((s) => s.execute);
+  const planned = usePlanStore((s) => s.activeKind === 'planned');
+  const meta = {
+    key: room.key,
+    name: room.name,
+    ...(room.meta?.ceilingMaterial ? { ceilingMaterial: room.meta.ceilingMaterial } : {}),
+  };
   return (
     <>
       <Header
@@ -311,13 +368,33 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
             onCommit={(text) => {
               const name = text.trim();
               if (!name) return false;
-              execute(setRoomMeta(room.meta, { ...(room.meta ?? {}), key: room.key, name }));
+              const floor = room.meta?.floorMaterial;
+              execute(
+                setRoomMeta(room.meta, {
+                  ...meta,
+                  name,
+                  ...(floor ? { floorMaterial: floor } : {}),
+                }),
+              );
               return true;
             }}
           />
         </Field>
         <PropRow label="Floor area" value={formatArea(room.area, units)} />
         <PropRow label="Perimeter" value={formatLength(room.perimeter, units)} />
+      </PanelSection>
+      <PanelSection title={planned ? 'New floor' : 'Existing floor'} className="border-b-0 pt-0">
+        <FloorPicker
+          value={room.meta?.floorMaterial}
+          onChange={(id) => {
+            execute(setRoomMeta(room.meta, { ...meta, ...(id ? { floorMaterial: id } : {}) }));
+          }}
+        />
+        {!planned && (
+          <p className="mt-3 text-[11px] leading-relaxed text-fg-subtle">
+            Record what’s there today. Only changes you make after “Start planning” are priced.
+          </p>
+        )}
       </PanelSection>
     </>
   );

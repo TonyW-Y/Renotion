@@ -13,6 +13,8 @@ export interface Selection {
   kind: SelectionKind;
   /** Element id, or room key for rooms. */
   id: string;
+  /** For walls picked in 3D: which face was clicked (A = left of start→end). */
+  side?: 'a' | 'b';
 }
 
 export const ZOOM_MIN = 0.25;
