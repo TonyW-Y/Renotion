@@ -1,4 +1,12 @@
-import { BrickWall, DoorOpen, Eraser, Grid2x2, MousePointer2, type LucideIcon } from 'lucide-react';
+import {
+  BrickWall,
+  DoorOpen,
+  Eraser,
+  Grid2x2,
+  MousePointer2,
+  Sofa,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Tool, ViewMode } from '@/state/uiStore';
 
 export interface ToolDef {
@@ -37,6 +45,13 @@ export const TOOLS: readonly ToolDef[] = [
     shortcut: 'N',
     icon: Grid2x2,
     hint: 'Click a wall to place a window',
+  },
+  {
+    id: 'furniture',
+    label: 'Furniture',
+    shortcut: 'F',
+    icon: Sofa,
+    hint: 'Pick an item, click to place · R rotates · Esc stops',
   },
   {
     id: 'delete',

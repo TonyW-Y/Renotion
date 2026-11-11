@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Vec2 } from '@/core/types';
 import type { UnitSystem } from '@/core/units';
 
-export type Tool = 'select' | 'wall' | 'door' | 'window' | 'delete';
+export type Tool = 'select' | 'wall' | 'door' | 'window' | 'furniture' | 'delete';
 export type ViewMode = '2d' | 'split' | '3d';
 export type Theme = 'dark' | 'light';
 export type CameraMode = 'orbit' | 'top' | 'walk';
@@ -46,6 +46,10 @@ export interface UiState {
   cursor: Vec2 | null;
   selection: Selection | null;
   hover: Selection | null;
+  /** Furniture model being placed with the furniture tool. */
+  placing: string | null;
+  /** Rotation (radians) of the item being placed. */
+  placeRotation: number;
 
   setSection: (section: Section) => void;
   setTool: (tool: Tool) => void;
@@ -66,6 +70,8 @@ export interface UiState {
   resetView: () => void;
   setCursor: (cursor: Vec2 | null) => void;
   select: (selection: Selection | null) => void;
+  setPlacing: (modelId: string | null) => void;
+  rotatePlacing: (delta: number) => void;
   setHover: (hover: Selection | null) => void;
 }
 
@@ -85,6 +91,8 @@ export const useUiStore = create<UiState>()(
       cursor: null,
       selection: null,
       hover: null,
+      placing: null,
+      placeRotation: 0,
 
       setSection: (section) => {
         set({ section, hover: null });
@@ -143,6 +151,12 @@ export const useUiStore = create<UiState>()(
       },
       select: (selection) => {
         set({ selection });
+      },
+      setPlacing: (placing) => {
+        set(placing ? { placing, tool: 'furniture', selection: null } : { placing: null });
+      },
+      rotatePlacing: (delta) => {
+        set((s) => ({ placeRotation: s.placeRotation + delta }));
       },
       setHover: (hover) => {
         set({ hover });
