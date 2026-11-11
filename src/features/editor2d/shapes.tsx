@@ -1,0 +1,403 @@
+import { Fragment } from 'react';
+import { Circle, Group, Line, Rect, Text } from 'react-konva';
+import { angle, add, scale, perp, sub } from '@/core/geometry/vec2';
+import { openingSpan, wallDirection, wallFootprint, wallLength } from '@/core/geometry/walls';
+import type { EndpointJoins } from '@/core/geometry/wallGraph';
+import type { ResolvedRoom } from '@/core/rooms';
+import type { ID, Opening, Vec2, Wall } from '@/core/types';
+import { formatArea, formatLength, type UnitSystem } from '@/core/units';
+import type { Selection } from '@/state/uiStore';
+import type { CanvasColors } from './useThemeColors';
+import { flat, toScreen, type View } from './viewport';
+
+export const FONT_SANS = 'Inter Variable, ui-sans-serif, system-ui, sans-serif';
+export const FONT_MONO = 'JetBrains Mono Variable, ui-monospace, monospace';
+
+const isSel = (s: Selection | null, kind: Selection['kind'], id: string) =>
+  s?.kind === kind && s.id === id;
+
+/* ------------------------------------------------------------------ */
+/* Rooms                                                               */
+/* ------------------------------------------------------------------ */
+
+interface RoomsProps {
+  rooms: readonly ResolvedRoom[];
+  view: View;
+  colors: CanvasColors;
+  selection: Selection | null;
+  hover: Selection | null;
+  units: UnitSystem;
+}
+
+export function RoomShapes({ rooms, view, colors, selection, hover }: Omit<RoomsProps, 'units'>) {
+  return (
+    <>
+      {rooms.map((r) => {
+        const selected = isSel(selection, 'room', r.key);
+        const hovered = isSel(hover, 'room', r.key);
+        return (
+          <Line
+            key={r.key}
+            points={flat(r.polygon, view)}
+            closed
+            fill={selected || hovered ? colors.accentSoft : colors.room}
+            stroke={selected ? colors.accent : 'transparent'}
+            strokeWidth={selected ? 1 : 0}
+            dash={[6, 4]}
+            perfectDrawEnabled={false}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+export function RoomLabels({
+  rooms,
+  view,
+  colors,
+  units,
+}: Omit<RoomsProps, 'selection' | 'hover'>) {
+  if (view.s < 30) return null;
+  return (
+    <>
+      {rooms.map((r) => {
+        const p = toScreen(r.labelAt, view);
+        return (
+          <Group key={r.key} x={p.x} y={p.y}>
+            <Text
+              text={r.name}
+              x={-90}
+              y={-15}
+              width={180}
+              align="center"
+              fontFamily={FONT_SANS}
+              fontSize={13}
+              fontStyle="600"
+              fill={colors.fg}
+            />
+            <Text
+              text={formatArea(r.area, units)}
+              x={-90}
+              y={3}
+              width={180}
+              align="center"
+              fontFamily={FONT_MONO}
+              fontSize={11}
+              fill={colors.fgMuted}
+            />
+          </Group>
+        );
+      })}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Walls                                                               */
+/* ------------------------------------------------------------------ */
+
+interface WallsProps {
+  walls: readonly Wall[];
+  joins: Map<ID, EndpointJoins>;
+  view: View;
+  colors: CanvasColors;
+  selection: Selection | null;
+  hover: Selection | null;
+  danger?: boolean;
+}
+
+export function WallShapes({
+  walls,
+  joins,
+  view,
+  colors,
+  selection,
+  hover,
+  danger = false,
+}: WallsProps) {
+  const highlighted = (w: Wall) => isSel(selection, 'wall', w.id) || isSel(hover, 'wall', w.id);
+  return (
+    <>
+      {/* Base pass: all walls share a fill so overlapping corners merge. */}
+      {walls.map((w) => (
+        <Line
+          key={w.id}
+          points={flat(wallFootprint(w, joins.get(w.id)), view)}
+          closed
+          fill={colors.wall}
+          perfectDrawEnabled={false}
+        />
+      ))}
+      {/* Highlight pass for hover / selection. */}
+      {walls.filter(highlighted).map((w) => {
+        const selected = isSel(selection, 'wall', w.id);
+        const tint = danger && !selected ? colors.danger : colors.accent;
+        return (
+          <Line
+            key={`hl-${w.id}`}
+            points={flat(wallFootprint(w, joins.get(w.id)), view)}
+            closed
+            fill={selected ? tint : 'transparent'}
+            opacity={selected ? 0.9 : 1}
+            stroke={tint}
+            strokeWidth={selected ? 0 : 2}
+            perfectDrawEnabled={false}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Openings                                                            */
+/* ------------------------------------------------------------------ */
+
+function arcPoints(center: Vec2, radius: number, a0: number, a1: number, steps = 18): Vec2[] {
+  let d = a1 - a0;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const a = a0 + (d * i) / steps;
+    return { x: center.x + Math.cos(a) * radius, y: center.y + Math.sin(a) * radius };
+  });
+}
+
+interface OpeningProps {
+  opening: Opening;
+  wall: Wall;
+  view: View;
+  colors: CanvasColors;
+  /** Override stroke (selection / ghost states). */
+  tint?: string;
+  ghost?: boolean;
+}
+
+export function OpeningShape({ opening, wall, view, colors, tint, ghost = false }: OpeningProps) {
+  const span = openingSpan(opening, wall);
+  const dir = wallDirection(wall);
+  const n = perp(dir);
+  const half = wall.thickness / 2;
+  const cut = [
+    add(span.start, scale(n, half)),
+    add(span.end, scale(n, half)),
+    sub(span.end, scale(n, half)),
+    sub(span.start, scale(n, half)),
+  ];
+  const line = tint ?? colors.fgMuted;
+  const sw = Math.max(1, Math.min(1.75, view.s / 60));
+
+  if (opening.type === 'window') {
+    return (
+      <Group opacity={ghost ? 0.85 : 1}>
+        <Line points={flat(cut, view)} closed fill={colors.canvas} stroke={line} strokeWidth={sw} />
+        <Line
+          points={flat([span.start, span.end], view)}
+          stroke={tint ?? colors.accent2}
+          strokeWidth={sw * 1.5}
+        />
+      </Group>
+    );
+  }
+
+  const sign = opening.swing === 'b' ? -1 : 1;
+  const hingeAtEnd = opening.hinge === 'end';
+  const hinge = hingeAtEnd ? span.end : span.start;
+  const other = hingeAtEnd ? span.start : span.end;
+  const face = scale(n, sign * half);
+  const hingeFace = add(hinge, face);
+  const otherFace = add(other, face);
+  const leafEnd = add(hingeFace, scale(n, sign * opening.width));
+  const arc = arcPoints(
+    hingeFace,
+    opening.width,
+    angle(sub(leafEnd, hingeFace)),
+    angle(sub(otherFace, hingeFace)),
+  );
+
+  return (
+    <Group opacity={ghost ? 0.85 : 1}>
+      <Line points={flat(cut, view)} closed fill={colors.canvas} />
+      <Line
+        points={flat(arc, view)}
+        stroke={line}
+        strokeWidth={sw * 0.8}
+        dash={[4, 3]}
+        opacity={0.8}
+      />
+      <Line
+        points={flat([hingeFace, leafEnd], view)}
+        stroke={tint ?? colors.fg}
+        strokeWidth={sw * 1.6}
+        lineCap="round"
+      />
+      {/* Jambs */}
+      <Line
+        points={flat([add(span.start, scale(n, half)), sub(span.start, scale(n, half))], view)}
+        stroke={line}
+        strokeWidth={sw}
+      />
+      <Line
+        points={flat([add(span.end, scale(n, half)), sub(span.end, scale(n, half))], view)}
+        stroke={line}
+        strokeWidth={sw}
+      />
+    </Group>
+  );
+}
+
+interface OpeningsProps {
+  openings: readonly Opening[];
+  walls: readonly Wall[];
+  view: View;
+  colors: CanvasColors;
+  selection: Selection | null;
+  hover: Selection | null;
+  danger?: boolean;
+}
+
+export function OpeningShapes({
+  openings,
+  walls,
+  view,
+  colors,
+  selection,
+  hover,
+  danger = false,
+}: OpeningsProps) {
+  const byId = new Map(walls.map((w) => [w.id, w]));
+  return (
+    <>
+      {openings.map((o) => {
+        const wall = byId.get(o.wallId);
+        if (!wall) return null;
+        const selected = isSel(selection, 'opening', o.id);
+        const hovered = isSel(hover, 'opening', o.id);
+        const tint =
+          selected || hovered ? (danger && !selected ? colors.danger : colors.accent) : undefined;
+        return (
+          <Fragment key={o.id}>
+            <OpeningShape
+              opening={o}
+              wall={wall}
+              view={view}
+              colors={colors}
+              {...(tint ? { tint } : {})}
+            />
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Overlays                                                            */
+/* ------------------------------------------------------------------ */
+
+interface LabelProps {
+  at: Vec2;
+  text: string;
+  colors: CanvasColors;
+  /** Rotation in degrees (screen space). */
+  rotation?: number;
+  accent?: boolean;
+}
+
+/** A small pill-shaped measurement label, centred on `at` (screen px). */
+export function Pill({ at, text, colors, rotation = 0, accent = false }: LabelProps) {
+  const fontSize = 11;
+  const w = text.length * fontSize * 0.62 + 12;
+  const h = 20;
+  return (
+    <Group x={at.x} y={at.y} rotation={rotation}>
+      <Rect
+        x={-w / 2}
+        y={-h / 2}
+        width={w}
+        height={h}
+        cornerRadius={h / 2}
+        fill={accent ? colors.accent : colors.surface}
+        stroke={accent ? 'transparent' : colors.border}
+        strokeWidth={1}
+        shadowColor="black"
+        shadowOpacity={0.18}
+        shadowBlur={8}
+        shadowOffsetY={2}
+      />
+      <Text
+        text={text}
+        x={-w / 2}
+        y={-h / 2 + 4.5}
+        width={w}
+        align="center"
+        fontFamily={FONT_MONO}
+        fontSize={fontSize}
+        fontStyle="500"
+        fill={accent ? '#fff' : colors.fg}
+      />
+    </Group>
+  );
+}
+
+/** Length label placed beside a segment (on side A), kept upright. */
+export function SegmentDimension({
+  a,
+  b,
+  offset,
+  view,
+  colors,
+  units,
+  accent = false,
+}: {
+  a: Vec2;
+  b: Vec2;
+  /** Offset from the centreline in metres (positive = side A). */
+  offset: number;
+  view: View;
+  colors: CanvasColors;
+  units: UnitSystem;
+  accent?: boolean;
+}) {
+  const len = wallLength({ start: a, end: b });
+  if (len < 0.01) return null;
+  const dir = wallDirection({ start: a, end: b });
+  const mid = add(scale(add(a, b), 0.5), scale(perp(dir), offset + 18 / view.s));
+  let deg = (-angle(dir) * 180) / Math.PI;
+  if (deg > 90) deg -= 180;
+  if (deg < -90) deg += 180;
+  return (
+    <Pill
+      at={toScreen(mid, view)}
+      text={formatLength(len, units)}
+      colors={colors}
+      rotation={deg}
+      accent={accent}
+    />
+  );
+}
+
+export function Handle({
+  at,
+  colors,
+  active = false,
+}: {
+  at: Vec2;
+  colors: CanvasColors;
+  active?: boolean;
+}) {
+  return (
+    <Circle
+      x={at.x}
+      y={at.y}
+      radius={active ? 6.5 : 5.5}
+      fill={colors.surface}
+      stroke={colors.accent}
+      strokeWidth={2}
+      shadowColor={colors.accent}
+      shadowBlur={active ? 10 : 0}
+      shadowOpacity={0.6}
+    />
+  );
+}
