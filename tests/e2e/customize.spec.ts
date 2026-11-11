@@ -1,0 +1,92 @@
+import { expect, test, type Page } from '@playwright/test';
+
+async function setup(page: Page) {
+  await page.goto('/editor');
+  const box = await page.getByTestId('plan-canvas').boundingBox();
+  if (!box) throw new Error('canvas not visible');
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const click = async (x: number, y: number) => {
+    await page.mouse.move(cx + x * 80, cy - y * 80, { steps: 2 });
+    await page.mouse.click(cx + x * 80, cy - y * 80);
+  };
+  // 6 m × 4 m room with a door on the south wall.
+  await page.keyboard.press('w');
+  for (const [x, y] of [
+    [-3, -2],
+    [3, -2],
+    [3, 2],
+    [-3, 2],
+    [-3, -2],
+  ] as const) {
+    await click(x, y);
+  }
+  await page.keyboard.press('d');
+  await click(-1.5, -2);
+  await page.keyboard.press('v');
+  await page.getByRole('button', { name: 'Start planning' }).click();
+  return { click, props: page.getByRole('complementary', { name: 'Properties' }) };
+}
+
+const money = (text: string) => Number(text.replace(/[^0-9.]/g, ''));
+
+test('new furniture is priced, resizing changes the price, recolouring does not', async ({
+  page,
+}) => {
+  const { click, props } = await setup(page);
+  const total = page.getByTestId('estimate-summary-total');
+
+  await page.keyboard.press('f');
+  await page.getByRole('button', { name: 'Place Sofa', exact: true }).click();
+  await click(0, 0.5);
+  await page.keyboard.press('v');
+  await expect(total).toHaveText('$1,299.00');
+
+  // Select it, unlock proportions, double the width → twice the footprint, twice the price.
+  await click(0, 0.5);
+  await props.getByRole('button', { name: 'Unlock proportions' }).click();
+  const width = props.getByRole('textbox', { name: 'Furniture width' });
+  await width.fill('4.2');
+  await width.press('Enter');
+  await expect(width).toHaveValue('4.20 m');
+  await expect(total).toHaveText('$2,598.00');
+
+  await props.getByRole('radio', { name: 'Main colour: Terracotta' }).click();
+  await expect(props.getByRole('radio', { name: 'Main colour: Terracotta' })).toBeChecked();
+  await expect(total).toHaveText('$2,598.00');
+
+  // Undo the colour and the resize.
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(total).toHaveText('$1,299.00');
+});
+
+test('a door becomes a pet door and a barn door, each priced as a new unit', async ({ page }) => {
+  const { click, props } = await setup(page);
+  await click(-1.5, -2);
+  await expect(props.getByRole('radiogroup', { name: 'Door design' })).toBeVisible();
+
+  await props.getByRole('button', { name: 'Pet', exact: true }).click();
+  await expect(props.getByRole('textbox', { name: 'Opening width' })).toHaveValue('0.30 m');
+  await expect(props.getByRole('radio', { name: 'Pet door' })).toBeChecked();
+
+  await props.getByRole('radio', { name: 'Sliding barn' }).click();
+  await page.getByRole('radio', { name: 'Estimate' }).click();
+  await expect(page.getByText('Sliding barn door kit').first()).toBeVisible();
+});
+
+test('a textured wall finish is priced per square foot and can be recoloured', async ({ page }) => {
+  const { click, props } = await setup(page);
+  await click(0, 2);
+  await props.getByRole('radio', { name: 'Texture' }).first().click();
+  await props.getByRole('radio', { name: 'Red brick veneer' }).first().click();
+  await props
+    .getByRole('radio', { name: /Texture colour .*: Sage/ })
+    .first()
+    .click();
+  await expect(props.getByRole('radio', { name: /Texture colour .*: Sage/ }).first()).toBeChecked();
+
+  await page.getByRole('radio', { name: 'Estimate' }).click();
+  await expect(page.getByText('Red brick veneer').first()).toBeVisible();
+  expect(money(await page.getByTestId('estimate-total').innerText())).toBeGreaterThan(0);
+});
