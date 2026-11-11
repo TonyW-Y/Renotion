@@ -1,5 +1,5 @@
 import { Environment, Grid } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree, type RootState } from '@react-three/fiber';
 import {
   Footprints,
   Layers2,
@@ -8,7 +8,13 @@ import {
   MousePointer2,
   Rotate3d,
 } from 'lucide-react';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import * as THREE from 'three';
+import { canPlaceFurniture } from '@/core/furniture/placement';
+import { snapToGrid } from '@/core/geometry/snapping';
+import { getDraggingModel, setDraggingModel } from '@/features/furniture/dragState';
+import { FURNITURE_MIME } from '@/features/furniture/FurnitureCatalog';
+import { createId } from '@/lib/id';
 import { IconButton, Kbd, SegmentedControl, Tooltip, type SegmentOption } from '@/components/ui';
 import type { Plan } from '@/core/types';
 import { useThemeColors } from '@/features/editor2d/useThemeColors';
@@ -74,6 +80,18 @@ function boundsOf(plan: Plan): SceneBounds {
   };
 }
 
+/** Exposes the R3F state outside the Canvas (for drag-and-drop raycasts). */
+function StateBridge({ stateRef }: { stateRef: RefObject<(() => RootState) | null> }) {
+  const get = useThree((s) => s.get);
+  useEffect(() => {
+    stateRef.current = get;
+  }, [get, stateRef]);
+  return null;
+}
+
+const FLOOR = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const raycaster = new THREE.Raycaster();
+
 function usePointerLocked() {
   const [locked, setLocked] = useState(false);
   useEffect(() => {
@@ -135,11 +153,46 @@ export default function Viewer3D() {
   }
 
   const ceilings = mode === 'walk' || showCeilings;
+  const threeRef = useRef<(() => RootState) | null>(null);
+  const execute = usePlanStore((s) => s.execute);
+
+  /** Plan-space point on the floor under a screen position, or null. */
+  const floorPointAt = (e: React.DragEvent<HTMLDivElement>) => {
+    const get = threeRef.current;
+    if (!get) return null;
+    const { camera } = get();
+    const r = e.currentTarget.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((e.clientX - r.left) / r.width) * 2 - 1,
+      -((e.clientY - r.top) / r.height) * 2 + 1,
+    );
+    raycaster.setFromCamera(ndc, camera);
+    const hit = raycaster.ray.intersectPlane(FLOOR, new THREE.Vector3());
+    return hit ? snapToGrid({ x: hit.x, y: -hit.z }, 0.05) : null;
+  };
   const shadowExtent = bounds.size * 0.9 + 4;
 
   return (
     <div
       data-testid="viewer-3d"
+      onDragOver={(e) => {
+        if (interactive && getDraggingModel() && e.dataTransfer.types.includes(FURNITURE_MIME)) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        }
+      }}
+      onDrop={(e) => {
+        const modelId = e.dataTransfer.getData(FURNITURE_MIME) || getDraggingModel();
+        setDraggingModel(null);
+        const at = modelId && interactive ? floorPointAt(e) : null;
+        if (!modelId || !at) return;
+        e.preventDefault();
+        const item = { id: createId(), modelId, position: at, rotation: 0 };
+        if (!canPlaceFurniture(item, plan)) return;
+        execute({ type: 'addFurniture', item });
+        useUiStore.getState().setTool('select');
+        useUiStore.getState().select({ kind: 'furniture', id: item.id });
+      }}
       className="relative h-full w-full overflow-hidden bg-[radial-gradient(ellipse_at_50%_15%,var(--surface-2),var(--canvas)_75%)]"
     >
       <Canvas
@@ -193,6 +246,7 @@ export default function Viewer3D() {
           fadeStrength={1.5}
         />
 
+        <StateBridge stateRef={threeRef} />
         <CameraRig mode={mode} bounds={bounds} plan={plan} rooms={rooms} fitKey={fitKey} />
       </Canvas>
 
