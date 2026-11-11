@@ -7,7 +7,7 @@ import {
   SquareDashed,
   Trash2,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   setOpeningProps,
   setRoomMeta,
@@ -18,6 +18,7 @@ import {
 } from '@/core/commands';
 import { canPlaceOpening, wallLength } from '@/core/geometry/walls';
 import { MIN_OPENING_SIZE, OPENING_PRESETS, openingStyleOf } from '@/core/openings';
+import { getMaterial } from '@/core/estimate/defaultCosts';
 import { wallSideRooms } from '@/core/estimate/quantities';
 import type { ResolvedRoom } from '@/core/rooms';
 import type { Opening, Plan, Wall } from '@/core/types';
@@ -34,7 +35,7 @@ import {
   type SegmentOption,
 } from '@/components/ui';
 import { ColorSwatches } from '@/features/materials/ColorSwatches';
-import { FloorPicker, PaintPicker } from '@/features/materials/MaterialPicker';
+import { FloorPicker, PaintPicker, WallTexturePicker } from '@/features/materials/MaterialPicker';
 import { OpeningDesignPicker } from './OpeningDesignPicker';
 import { cn } from '@/lib/cn';
 import { usePlanStore } from '@/state/planStore';
@@ -168,7 +169,6 @@ function WallPaint({
   rooms: readonly ResolvedRoom[];
   side?: 'a' | 'b' | undefined;
 }) {
-  const execute = usePlanStore((s) => s.execute);
   const sides = wallSideRooms({ walls: [wall] }, rooms).get(wall.id);
   const facing = (s: 'a' | 'b') => {
     const names = (sides?.[s] ?? [])
@@ -178,25 +178,90 @@ function WallPaint({
   };
   return (
     <>
-      {(['a', 'b'] as const).map((s) => {
-        const key = s === 'a' ? 'finishA' : 'finishB';
-        return (
-          <PanelSection
-            key={s}
-            title={`Paint · ${facing(s)}`}
-            className={cn('border-b-0 pt-0', side === s && 'rounded-xl bg-accent-soft/40')}
-          >
-            <PaintPicker
-              label={`Paint facing ${facing(s)}`}
-              value={wall[key]}
-              onChange={(id) => {
-                execute(setWallProps(plan, wall.id, { [key]: id }));
-              }}
-            />
-          </PanelSection>
-        );
-      })}
+      {(['a', 'b'] as const).map((s) => (
+        <PanelSection
+          key={s}
+          title={`Finish · ${facing(s)}`}
+          className={cn('border-b-0 pt-0', side === s && 'rounded-xl bg-accent-soft/40')}
+        >
+          <WallSideFinish
+            key={`${wall.id}:${s}`}
+            wall={wall}
+            plan={plan}
+            side={s}
+            facing={facing(s)}
+          />
+        </PanelSection>
+      ))}
     </>
+  );
+}
+
+const FINISH_MODES: readonly SegmentOption<'paint' | 'texture'>[] = [
+  { value: 'paint', label: 'Paint' },
+  { value: 'texture', label: 'Texture' },
+];
+
+/** Paint or textured finish (with optional recolour) for one side of a wall. */
+function WallSideFinish({
+  wall,
+  plan,
+  side,
+  facing,
+}: {
+  wall: Wall;
+  plan: Plan;
+  side: 'a' | 'b';
+  facing: string;
+}) {
+  const execute = usePlanStore((s) => s.execute);
+  const key = side === 'a' ? 'finishA' : 'finishB';
+  const tintKey = side === 'a' ? 'tintA' : 'tintB';
+  const current = getMaterial(wall[key]);
+  const textured = current?.category === 'wallFinish';
+  const [mode, setMode] = useState<'paint' | 'texture'>(textured ? 'texture' : 'paint');
+  return (
+    <div className="space-y-3">
+      <SegmentedControl
+        ariaLabel={`Finish type facing ${facing}`}
+        value={mode}
+        className="w-full [&>*]:flex-1"
+        options={FINISH_MODES}
+        onChange={setMode}
+      />
+      {mode === 'paint' ? (
+        <PaintPicker
+          label={`Paint facing ${facing}`}
+          value={textured ? undefined : wall[key]}
+          onChange={(id) => {
+            execute(setWallProps(plan, wall.id, { [key]: id, [tintKey]: null }));
+          }}
+        />
+      ) : (
+        <>
+          <WallTexturePicker
+            label={`Texture facing ${facing}`}
+            value={textured ? wall[key] : undefined}
+            onChange={(id) => {
+              execute(setWallProps(plan, wall.id, { [key]: id, [tintKey]: null }));
+            }}
+          />
+          {textured && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-fg-muted">Colour</p>
+              <ColorSwatches
+                label={`Texture colour facing ${facing}`}
+                value={wall[tintKey]}
+                original={current.colorHex}
+                onChange={(hex) => {
+                  execute(setWallProps(plan, wall.id, { [tintKey]: hex }));
+                }}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -416,6 +481,7 @@ export function OpeningInspector({
 export function RoomInspector({ room, units }: { room: ResolvedRoom; units: UnitSystem }) {
   const execute = usePlanStore((s) => s.execute);
   const planned = usePlanStore((s) => s.activeKind === 'planned');
+  const floor = getMaterial(room.meta?.floorMaterial);
   const meta = {
     key: room.key,
     name: room.name,
@@ -437,12 +503,14 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
             onCommit={(text) => {
               const name = text.trim();
               if (!name) return false;
-              const floor = room.meta?.floorMaterial;
+              const floorId = room.meta?.floorMaterial;
+              const tint = room.meta?.floorTint;
               execute(
                 setRoomMeta(room.meta, {
                   ...meta,
                   name,
-                  ...(floor ? { floorMaterial: floor } : {}),
+                  ...(floorId ? { floorMaterial: floorId } : {}),
+                  ...(tint ? { floorTint: tint } : {}),
                 }),
               );
               return true;
@@ -456,9 +524,29 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
         <FloorPicker
           value={room.meta?.floorMaterial}
           onChange={(id) => {
+            // A new floor starts in its own colour.
             execute(setRoomMeta(room.meta, { ...meta, ...(id ? { floorMaterial: id } : {}) }));
           }}
         />
+        {floor?.textureSet && (
+          <div className="mt-3 space-y-1.5">
+            <p className="text-xs text-fg-muted">Colour</p>
+            <ColorSwatches
+              label="Floor colour"
+              value={room.meta?.floorTint}
+              original={floor.colorHex}
+              onChange={(hex) => {
+                execute(
+                  setRoomMeta(room.meta, {
+                    ...meta,
+                    ...(room.meta?.floorMaterial ? { floorMaterial: room.meta.floorMaterial } : {}),
+                    ...(hex ? { floorTint: hex } : {}),
+                  }),
+                );
+              }}
+            />
+          </div>
+        )}
         {!planned && (
           <p className="mt-3 text-[11px] leading-relaxed text-fg-subtle">
             Record what’s there today. Only changes you make after “Start planning” are priced.

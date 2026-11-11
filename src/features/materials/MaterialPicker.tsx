@@ -1,7 +1,13 @@
 import { Ban, Check, Pipette } from 'lucide-react';
 import { Tooltip } from '@/components/ui';
-import { customPaintId, FLOORING, getMaterial, PAINTS } from '@/core/estimate/defaultCosts';
-import type { ID } from '@/core/types';
+import {
+  customPaintId,
+  FLOORING,
+  getMaterial,
+  PAINTS,
+  WALL_FINISHES,
+} from '@/core/estimate/defaultCosts';
+import type { ID, Material } from '@/core/types';
 import { cn } from '@/lib/cn';
 import { textureUrl } from './textures';
 
@@ -15,13 +21,44 @@ interface PickerProps {
 /** Grid of floor finishes with texture thumbnails. */
 export function FloorPicker({ value, onChange }: PickerProps) {
   return (
-    <div role="radiogroup" aria-label="Floor material" className="grid grid-cols-4 gap-2">
+    <TexturePicker
+      label="Floor material"
+      noneLabel="No floor material"
+      options={FLOOR_CHOICES}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+/** Grid of textured wall finishes (brick, stone, panelling, tile...). */
+export function WallTexturePicker({ value, onChange, label }: PickerProps & { label: string }) {
+  return (
+    <TexturePicker
+      label={label}
+      noneLabel={`${label}: none`}
+      options={WALL_FINISHES}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+function TexturePicker({
+  value,
+  onChange,
+  options,
+  label,
+  noneLabel,
+}: PickerProps & { options: readonly Material[]; label: string; noneLabel: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid grid-cols-4 gap-2">
       <Tooltip content="No change">
         <button
           type="button"
           role="radio"
           aria-checked={!value}
-          aria-label="No floor material"
+          aria-label={noneLabel}
           onClick={() => {
             onChange(null);
           }}
@@ -33,7 +70,7 @@ export function FloorPicker({ value, onChange }: PickerProps) {
           <Ban className="size-4" />
         </button>
       </Tooltip>
-      {FLOOR_CHOICES.map((m) => {
+      {options.map((m) => {
         const active = value === m.id;
         return (
           <Tooltip key={m.id} content={m.name}>

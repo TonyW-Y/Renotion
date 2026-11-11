@@ -55,7 +55,10 @@ export function PlanCanvas() {
   const { previewPlan } = ix;
   const { rooms, joins } = useDerivedPlan(previewPlan);
   const patterns = usePatternImages(
-    rooms.flatMap((r) => getMaterial(r.meta?.floorMaterial)?.textureSet ?? []),
+    rooms.flatMap((r) => {
+      const set = getMaterial(r.meta?.floorMaterial)?.textureSet;
+      return set ? [{ set, tint: r.meta?.floorTint }] : [];
+    }),
   );
 
   // Redraw once web fonts are ready (Konva measures text on draw).

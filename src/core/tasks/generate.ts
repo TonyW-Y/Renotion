@@ -53,7 +53,11 @@ function chain(
  */
 export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
   const tasks: TaskSpec[] = [];
-  interface RoomArea { roomKey: string | null; roomName: string; area: number }
+  interface RoomArea {
+    roomKey: string | null;
+    roomName: string;
+    area: number;
+  }
   const paintedRooms = new Map<string, RoomArea>();
   const finished = new Map<string, RoomArea>();
   const furnished = new Map<string, { roomKey: string | null; roomName: string; pieces: number }>();

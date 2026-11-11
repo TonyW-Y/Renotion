@@ -11,8 +11,8 @@ import { useUiStore, type Selection } from '@/state/uiStore';
 import { getMaterial } from '@/core/estimate/defaultCosts';
 import {
   useTexturedFloor,
+  useWallSideMaterial,
   wallEdgeMaterial,
-  wallFaceMaterial,
   type HighlightState,
 } from './finishMaterials';
 import { FurnitureModels } from './FurnitureModels';
@@ -113,10 +113,10 @@ const WallMesh = memo(
 
     // Face order: end, start, top, bottom, side B, side A. Joined end faces are
     // buried against the neighbouring wall, so they're hidden.
+    const sideA = useWallSideMaterial(wall.finishA, wall.tintA, state, accent);
+    const sideB = useWallSideMaterial(wall.finishB, wall.tintB, state, accent);
     const mats = useMemo(() => {
       const edge = wallEdgeMaterial(state, accent);
-      const sideB = wallFaceMaterial(wall.finishB, state, accent);
-      const sideA = wallFaceMaterial(wall.finishA, state, accent);
       return pieces.map((p) => [
         p.hideEnd ? MATERIALS.hidden : edge,
         p.hideStart ? MATERIALS.hidden : edge,
@@ -125,7 +125,7 @@ const WallMesh = memo(
         sideB,
         sideA,
       ]);
-    }, [pieces, wall.finishA, wall.finishB, state, accent]);
+    }, [pieces, sideA, sideB, state, accent]);
 
     const a = angle(wallDirection(wall));
     return (
@@ -244,7 +244,7 @@ function TexturedFloor({
   set,
   tileSize,
 }: FloorProps & { set: string; tileSize: number }) {
-  const mat = useTexturedFloor(set, tileSize, state, accent);
+  const mat = useTexturedFloor(set, tileSize, state, accent, room.meta?.floorTint);
   return <FloorMesh room={room} material={mat} interactive={interactive} />;
 }
 
@@ -252,7 +252,9 @@ function RoomFloor(props: FloorProps) {
   const m = getMaterial(props.room.meta?.floorMaterial);
   if (m?.textureSet) {
     return (
-      <Suspense fallback={<PlainFloor {...props} color={m.colorHex} />}>
+      <Suspense
+        fallback={<PlainFloor {...props} color={props.room.meta?.floorTint ?? m.colorHex} />}
+      >
         <TexturedFloor {...props} set={m.textureSet} tileSize={m.tileSize ?? 1} />
       </Suspense>
     );

@@ -9,6 +9,8 @@ import type { ID, Opening, Vec2, Wall } from '@/core/types';
 import { getMaterial } from '@/core/estimate/defaultCosts';
 import { formatArea, formatLength, type UnitSystem } from '@/core/units';
 import type { Selection } from '@/state/uiStore';
+import { patternKey } from '@/features/materials/tint';
+import type { PatternImage } from './usePatternImages';
 import type { CanvasColors } from './useThemeColors';
 import { flat, toScreen, type View } from './viewport';
 
@@ -42,7 +44,7 @@ export function RoomShapes({
   patterns,
 }: Omit<RoomsProps, 'units'> & {
   behind?: boolean;
-  patterns?: ReadonlyMap<string, HTMLImageElement>;
+  patterns?: ReadonlyMap<string, PatternImage>;
 }) {
   const op = behind ? 'destination-over' : 'source-over';
   return (
@@ -52,7 +54,9 @@ export function RoomShapes({
         const hovered = isSel(hover, 'room', r.key);
         const points = flat(r.polygon, view);
         const finish = getMaterial(r.meta?.floorMaterial);
-        const img = finish?.textureSet ? patterns?.get(finish.textureSet) : undefined;
+        const img = finish?.textureSet
+          ? patterns?.get(patternKey(finish.textureSet, r.meta?.floorTint))
+          : undefined;
         const k = img && finish?.tileSize ? (finish.tileSize * view.s) / img.width : 1;
         // In destination-over mode, shapes drawn later end up underneath:
         // draw the highlight first so it sits on top of the floor finish.
@@ -74,7 +78,8 @@ export function RoomShapes({
               <Line
                 points={points}
                 closed
-                fillPatternImage={img}
+                // Konva draws canvases too; its typings only mention images.
+                fillPatternImage={img as HTMLImageElement}
                 fillPatternRepeat="repeat"
                 fillPatternScale={{ x: k, y: k }}
                 fillPatternX={view.ox}
@@ -87,7 +92,7 @@ export function RoomShapes({
               <Line
                 points={points}
                 closed
-                fill={finish?.colorHex ?? colors.room}
+                fill={r.meta?.floorTint ?? finish?.colorHex ?? colors.room}
                 opacity={finish ? 0.8 : 1}
                 perfectDrawEnabled={false}
                 globalCompositeOperation={op}
@@ -110,7 +115,9 @@ export function PaintStrips({ walls, view }: { walls: readonly Wall[]; view: Vie
       ['a', 1],
       ['b', -1],
     ] as const) {
-      const color = getMaterial(side === 'a' ? w.finishA : w.finishB)?.colorHex;
+      const color =
+        (side === 'a' ? w.tintA : w.tintB) ??
+        getMaterial(side === 'a' ? w.finishA : w.finishB)?.colorHex;
       if (!color) continue;
       const off = scale(n, sign * (w.thickness / 2 - 2.5 / view.s));
       strips.push({ key: `${w.id}${side}`, pts: [add(w.start, off), add(w.end, off)], color });
