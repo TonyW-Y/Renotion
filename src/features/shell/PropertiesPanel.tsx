@@ -10,6 +10,7 @@ import {
   WallInspector,
 } from '@/features/inspector/Inspectors';
 import { EstimateSummary } from '@/features/estimate/EstimateSummary';
+import { FurnitureInspector } from '@/features/inspector/FurnitureInspector';
 import { selectActivePlan, usePlanStore } from '@/state/planStore';
 import { useDerivedPlan } from '@/state/useDerivedPlan';
 import { useUiStore } from '@/state/uiStore';
@@ -30,6 +31,8 @@ export function PropertiesPanel() {
     selection?.kind === 'opening' ? plan.openings.find((o) => o.id === selection.id) : undefined;
   const openingWall = opening && plan.walls.find((w) => w.id === opening.wallId);
   const room = selection?.kind === 'room' ? rooms.find((r) => r.key === selection.id) : undefined;
+  const item =
+    selection?.kind === 'furniture' ? plan.furniture.find((f) => f.id === selection.id) : undefined;
   const inspector = wall ? (
     <WallInspector
       key={wall.id}
@@ -49,6 +52,8 @@ export function PropertiesPanel() {
     />
   ) : room ? (
     <RoomInspector key={room.key} room={room} units={units} />
+  ) : item ? (
+    <FurnitureInspector key={item.id} item={item} plan={plan} units={units} />
   ) : null;
 
   return (
