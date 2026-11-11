@@ -11,6 +11,7 @@ import {
   moveCorner,
   moveOpening,
   setOpeningProps,
+  setFurnitureProps,
   setRoomMeta,
   setWallLength,
   setWallProps,
@@ -164,6 +165,15 @@ describe('commands', () => {
       from: { rotation: 0 },
       to: { rotation: Math.PI / 2 },
     });
+  });
+
+  it('builds furniture prop changes with their inverse', () => {
+    const item = { id: 'f1', modelId: 'sofa', position: { x: 1, y: 1 }, rotation: 0 };
+    const withItem = applyCommand(basePlan(), { type: 'addFurniture', item });
+    expectRoundTrip(
+      withItem,
+      setFurnitureProps(withItem, 'f1', { position: { x: 2, y: 2 }, rotation: 1 }),
+    );
   });
 
   it('describes commands for the undo menu', () => {

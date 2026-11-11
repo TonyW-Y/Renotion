@@ -12,7 +12,7 @@ import {
   type Wall,
 } from '../types';
 import { applyCommand } from './apply';
-import type { Command, OpeningPatch, WallPatch } from './types';
+import type { Command, FurniturePatch, OpeningPatch, WallPatch } from './types';
 
 /** Captures the current values of the patched keys (missing → null) for inversion. */
 function snapshot<P extends object>(obj: object, to: P): P {
@@ -176,6 +176,11 @@ export function deleteFurniture(plan: Plan, itemId: ID): Command | null {
   const index = plan.furniture.findIndex((f) => f.id === itemId);
   const item = plan.furniture[index];
   return item ? { type: 'deleteFurniture', item, index } : null;
+}
+
+export function setFurnitureProps(plan: Plan, itemId: ID, to: FurniturePatch): Command | null {
+  const item = plan.furniture.find((f) => f.id === itemId);
+  return item ? { type: 'setFurnitureProps', itemId, from: snapshot(item, to), to } : null;
 }
 
 /** Replaces `from` (possibly stored under an older key) with `to`. */
