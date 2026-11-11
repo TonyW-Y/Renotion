@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  maxOpeningWidth,
   canPlaceOpening,
   clampOpeningOffset,
   offsetAlongWall,
@@ -57,5 +58,17 @@ describe('openings', () => {
     );
     // moving an opening onto itself is fine
     expect(canPlaceOpening({ id: 'o1', offset: 1.2, width: 0.9 }, wall, existing, 'w')).toBe(true);
+  });
+});
+
+describe('maxOpeningWidth', () => {
+  const wall = { start: { x: 0, y: 0 }, end: { x: 4, y: 0 } };
+  it('is limited by the nearer wall end', () => {
+    expect(maxOpeningWidth({ id: 'a', offset: 1 }, wall, [], 'w')).toBeCloseTo(1.9);
+  });
+  it('is limited by a neighbouring opening', () => {
+    const other = { id: 'b', wallId: 'w', offset: 3, width: 1 };
+    // right bound = 3 − 0.5 − 0.05 = 2.45 → 2 × (2.45 − 2) = 0.9
+    expect(maxOpeningWidth({ id: 'a', offset: 2 }, wall, [other], 'w')).toBeCloseTo(0.9);
   });
 });

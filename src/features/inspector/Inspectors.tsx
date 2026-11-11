@@ -16,7 +16,7 @@ import {
   deleteOpening,
   deleteWall,
 } from '@/core/commands';
-import { canPlaceOpening, wallLength } from '@/core/geometry/walls';
+import { canPlaceOpening, maxOpeningWidth, wallLength } from '@/core/geometry/walls';
 import { MIN_OPENING_SIZE, OPENING_PRESETS, openingStyleOf } from '@/core/openings';
 import { getMaterial } from '@/core/estimate/defaultCosts';
 import { wallSideRooms } from '@/core/estimate/quantities';
@@ -422,6 +422,16 @@ export function OpeningInspector({
             }}
           />
         </Field>
+        <p className="mt-1.5 text-[11px] text-fg-subtle">
+          Fits up to{' '}
+          <span className="tabular font-mono text-fg-muted">
+            {formatLength(maxOpeningWidth(opening, wall, plan.openings, wall.id), units, {
+              decimals: 2,
+            })}{' '}
+            × {formatLength(wall.height - opening.sillHeight, units, { decimals: 2 })}
+          </span>{' '}
+          here · drag the end grips on the plan to resize
+        </p>
       </PanelSection>
       <PanelSection title="Colour" className="border-b-0 pt-0">
         <ColorSwatches

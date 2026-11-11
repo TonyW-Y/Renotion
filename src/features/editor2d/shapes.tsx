@@ -649,3 +649,47 @@ export function Handle({
     />
   );
 }
+
+/** Grips at both ends of the selected door / window: drag to resize it along the wall. */
+export function OpeningResizeHandles({
+  opening,
+  wall,
+  view,
+  colors,
+}: {
+  opening: Opening;
+  wall: Wall;
+  view: View;
+  colors: CanvasColors;
+}) {
+  const span = openingSpan(opening, wall);
+  const deg = (-angle(wallDirection(wall)) * 180) / Math.PI;
+  const h = Math.max(14, wall.thickness * view.s + 10);
+  const w = 7;
+  return (
+    <>
+      {[span.start, span.end].map((p, i) => {
+        const at = toScreen(p, view);
+        return (
+          <Rect
+            key={i}
+            x={at.x}
+            y={at.y}
+            width={w}
+            height={h}
+            offsetX={w / 2}
+            offsetY={h / 2}
+            rotation={deg}
+            cornerRadius={w / 2}
+            fill={colors.surface}
+            stroke={colors.accent}
+            strokeWidth={2}
+            shadowColor="black"
+            shadowOpacity={0.2}
+            shadowBlur={4}
+          />
+        );
+      })}
+    </>
+  );
+}

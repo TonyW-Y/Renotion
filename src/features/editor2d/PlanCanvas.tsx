@@ -18,6 +18,7 @@ import {
   PaintStrips,
   RoomLabels,
   RoomShapes,
+  OpeningResizeHandles,
   SegmentDimension,
   WallShapes,
 } from './shapes';
@@ -252,15 +253,25 @@ export function PlanCanvas() {
                 if (!w) return null;
                 const span = openingSpan(selectedOpening, w);
                 return (
-                  <SegmentDimension
-                    a={span.start}
-                    b={span.end}
-                    offset={w.thickness / 2}
-                    view={view}
-                    colors={colors}
-                    units={units}
-                    accent
-                  />
+                  <>
+                    <SegmentDimension
+                      a={span.start}
+                      b={span.end}
+                      offset={w.thickness / 2}
+                      view={view}
+                      colors={colors}
+                      units={units}
+                      accent
+                    />
+                    {tool === 'select' && (
+                      <OpeningResizeHandles
+                        opening={selectedOpening}
+                        wall={w}
+                        view={view}
+                        colors={colors}
+                      />
+                    )}
+                  </>
                 );
               })()}
 

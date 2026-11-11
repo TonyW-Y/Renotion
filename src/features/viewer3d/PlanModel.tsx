@@ -160,19 +160,53 @@ const WallMesh = memo(
 
 /* ------------------------------------------------------------------ */
 
-function OpeningMesh({ opening, wall }: { opening: Opening; wall: Wall }) {
+function OpeningMesh({
+  opening,
+  wall,
+  state,
+  accent,
+  interactive,
+}: {
+  opening: Opening;
+  wall: Wall;
+  state: HighlightState;
+  accent: string;
+  interactive: boolean;
+}) {
   const span = openingSpan(opening, wall);
   const a = angle(wallDirection(wall));
   const parts = useMemo(() => openingParts(opening, wall.thickness), [opening, wall.thickness]);
+  // Hover / selection tint: one highlighted copy per distinct material.
+  const tinted = useMemo(() => {
+    if (state === 'none') return null;
+    const m = new Map<THREE.Material, THREE.Material>();
+    for (const p of parts) {
+      if (!m.has(p.material) && p.material instanceof THREE.MeshStandardMaterial) {
+        m.set(p.material, highlighted(p.material, accent, state === 'selected' ? 0.55 : 0.2));
+      }
+    }
+    return m;
+  }, [parts, state, accent]);
+  useEffect(
+    () => () => {
+      tinted?.forEach((m) => {
+        m.dispose();
+      });
+    },
+    [tinted],
+  );
   const centreU = (span.from + span.to) / 2;
   return (
     <group position={[wall.start.x, 0, -wall.start.y]} rotation={[0, a, 0]}>
-      <group position={[centreU, opening.sillHeight, 0]}>
+      <group
+        position={[centreU, opening.sillHeight, 0]}
+        {...(interactive ? interactions({ kind: 'opening', id: opening.id }) : {})}
+      >
         {parts.map((p, i) => (
           <mesh
             key={i}
             position={p.position}
-            material={p.material}
+            material={tinted?.get(p.material) ?? p.material}
             castShadow={p.shadow ?? true}
             receiveShadow
           >
@@ -320,7 +354,16 @@ export function PlanModel({
       ))}
       {plan.openings.map((o) => {
         const w = wallsById.get(o.wallId);
-        return w ? <OpeningMesh key={o.id} opening={o} wall={w} /> : null;
+        return w ? (
+          <OpeningMesh
+            key={o.id}
+            opening={o}
+            wall={w}
+            state={interactive ? stateOf(selection, hover, 'opening', o.id) : 'none'}
+            accent={accent}
+            interactive={interactive}
+          />
+        ) : null;
       })}
       {rooms.map((r) => (
         <RoomFloor

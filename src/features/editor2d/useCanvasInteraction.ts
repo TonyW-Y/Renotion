@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   setFurnitureProps,
+  setOpeningProps,
   addOpening,
   addWall,
   applyCommand,
@@ -25,8 +26,10 @@ import {
   canPlaceOpening,
   clampOpeningOffset,
   offsetAlongWall,
+  openingSpan,
   wallLength,
 } from '@/core/geometry/walls';
+import { MIN_OPENING_SIZE } from '@/core/openings';
 import type { ResolvedRoom } from '@/core/rooms';
 import {
   DEFAULT_DOOR,
@@ -55,6 +58,17 @@ type Drag =
   | { kind: 'corner'; sx: number; sy: number; at: Vec2; to: Vec2; moved: boolean }
   | { kind: 'wall'; sx: number; sy: number; wallId: string; w0: Vec2; delta: Vec2; moved: boolean }
   | { kind: 'opening'; sx: number; sy: number; openingId: string; offset: number; moved: boolean }
+  | {
+      kind: 'opening-resize';
+      sx: number;
+      sy: number;
+      openingId: string;
+      /** Distance along the wall of the edge that stays put. */
+      fixed: number;
+      offset: number;
+      width: number;
+      moved: boolean;
+    }
   | {
       kind: 'furniture';
       sx: number;
@@ -103,6 +117,18 @@ export function resizeHandleAt(
     x: item.position.x + ex.x * (m.width / 2) + ey.x * (m.depth / 2),
     y: item.position.y + ex.y * (m.width / 2) + ey.y * (m.depth / 2),
   };
+}
+
+/** The two grips at either end of a door / window, on the wall's centre line. */
+export function openingHandles(
+  o: Pick<Opening, 'offset' | 'width'>,
+  w: Pick<Wall, 'start' | 'end'>,
+): { end: 'start' | 'end'; at: Vec2 }[] {
+  const span = openingSpan(o, w);
+  return [
+    { end: 'start', at: span.start },
+    { end: 'end', at: span.end },
+  ];
 }
 
 /** Where the rotate handle of a furniture item sits (in front of it). */
@@ -304,6 +330,10 @@ export function useCanvasInteraction(
           : null;
       case 'opening':
         return drag.moved ? moveOpening(plan, drag.openingId, drag.offset) : null;
+      case 'opening-resize':
+        return drag.moved
+          ? setOpeningProps(plan, drag.openingId, { width: drag.width, offset: drag.offset })
+          : null;
       case 'furniture':
         return drag.moved
           ? setFurnitureProps(plan, drag.itemId, { position: drag.position })
@@ -382,6 +412,25 @@ export function useCanvasInteraction(
       }
       case 'select': {
         const { selection } = useUiStore.getState();
+        if (selection?.kind === 'opening') {
+          const o = plan.openings.find((x) => x.id === selection.id);
+          const w = o && plan.walls.find((x) => x.id === o.wallId);
+          const ends = o && w ? openingHandles(o, w) : null;
+          const grabbed = ends?.find((h) => distance(h.at, world) <= CORNER_PICK_PX / view.s);
+          if (o && grabbed) {
+            setDrag({
+              kind: 'opening-resize',
+              sx: s.x,
+              sy: s.y,
+              openingId: o.id,
+              fixed: grabbed.end === 'start' ? o.offset + o.width / 2 : o.offset - o.width / 2,
+              offset: o.offset,
+              width: o.width,
+              moved: false,
+            });
+            return;
+          }
+        }
         if (selection?.kind === 'furniture') {
           const item = plan.furniture.find((f) => f.id === selection.id);
           const grip = item && resizeHandleAt(item);
@@ -549,6 +598,21 @@ export function useCanvasInteraction(
           );
           return;
         }
+        case 'opening-resize': {
+          const o = plan.openings.find((x) => x.id === drag.openingId);
+          const w = o && plan.walls.find((x) => x.id === o.wallId);
+          if (!o || !w) return;
+          const u = Math.round(offsetAlongWall(world, w) / 0.05) * 0.05;
+          const width = Math.max(MIN_OPENING_SIZE, Math.abs(u - drag.fixed));
+          const edge = u < drag.fixed ? drag.fixed - width : drag.fixed + width;
+          const offset = (edge + drag.fixed) / 2;
+          if (canPlaceOpening({ ...o, width, offset }, w, plan.openings, w.id)) {
+            setDrag({ ...drag, width, offset, moved: true });
+          } else if (!drag.moved) {
+            setDrag({ ...drag, moved: true });
+          }
+          return;
+        }
         case 'opening': {
           if (!moved && !drag.moved) return;
           const o = plan.openings.find((x) => x.id === drag.openingId);
@@ -626,7 +690,8 @@ export function useCanvasInteraction(
           drag?.kind === 'opening' ||
           drag?.kind === 'furniture' ||
           drag?.kind === 'rotate' ||
-          drag?.kind === 'resize'
+          drag?.kind === 'resize' ||
+          drag?.kind === 'opening-resize'
           ? 'grabbing'
           : hoverCorner
             ? 'move'

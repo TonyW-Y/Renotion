@@ -85,3 +85,24 @@ export function canPlaceOpening(
     return to + margin <= oFrom + 1e-9 || from >= oTo + margin - 1e-9;
   });
 }
+
+/**
+ * Widest this opening can be, centred where it is now, without leaving the
+ * wall or touching a neighbouring opening.
+ */
+export function maxOpeningWidth(
+  o: Pick<Opening, 'id' | 'offset'>,
+  wall: Pick<Wall, 'start' | 'end'>,
+  openings: readonly Pick<Opening, 'id' | 'wallId' | 'offset' | 'width'>[],
+  wallId: string,
+  margin = OPENING_MARGIN,
+): number {
+  let left = margin;
+  let right = wallLength(wall) - margin;
+  for (const other of openings) {
+    if (other.wallId !== wallId || other.id === o.id) continue;
+    if (other.offset < o.offset) left = Math.max(left, other.offset + other.width / 2 + margin);
+    else right = Math.min(right, other.offset - other.width / 2 - margin);
+  }
+  return Math.max(0, 2 * Math.min(o.offset - left, right - o.offset));
+}
