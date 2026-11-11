@@ -213,7 +213,7 @@ export function EstimateView() {
                 key={estimate.total}
                 initial={{ opacity: 0.4, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-gradient tabular font-mono text-3xl font-semibold"
+                className="text-accent-gradient tabular font-mono text-3xl font-semibold"
                 data-testid="estimate-total"
               >
                 {formatMoney(estimate.total)}

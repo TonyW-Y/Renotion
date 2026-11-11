@@ -25,7 +25,7 @@ export function EstimateSummary() {
       }
     >
       <p
-        className="text-gradient tabular font-mono text-2xl font-semibold"
+        className="text-accent-gradient tabular font-mono text-2xl font-semibold"
         data-testid="estimate-summary-total"
       >
         {formatMoney(estimate.total)}
