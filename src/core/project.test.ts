@@ -27,6 +27,10 @@ describe('project', () => {
     expect(p?.name).toBe('Untitled project');
     expect(p?.baseline.openings).toEqual([]);
     expect(p?.planned).toBeNull();
+    expect(p?.costOverrides).toEqual({});
+    expect(
+      normalizeProject({ id: 'x', costOverrides: { oak: 8, bad: 'x', neg: -1 } })?.costOverrides,
+    ).toEqual({ oak: 8 });
     expect(normalizeProject(null)).toBeNull();
     expect(normalizeProject({ name: 'no id' })).toBeNull();
   });

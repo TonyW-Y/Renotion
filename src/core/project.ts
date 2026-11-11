@@ -14,6 +14,8 @@ export interface ProjectDoc {
   updatedAt: string;
   baseline: Plan;
   planned: Plan | null;
+  /** Price overrides (CAD per unit) keyed by material id. */
+  costOverrides: Record<string, number>;
 }
 
 export function createProject(
@@ -21,7 +23,15 @@ export function createProject(
   name = 'Untitled project',
   now = new Date().toISOString(),
 ): ProjectDoc {
-  return { id, name, createdAt: now, updatedAt: now, baseline: createEmptyPlan(), planned: null };
+  return {
+    id,
+    name,
+    createdAt: now,
+    updatedAt: now,
+    baseline: createEmptyPlan(),
+    planned: null,
+    costOverrides: {},
+  };
 }
 
 export function getPlan(project: ProjectDoc, kind: PlanKind): Plan {
@@ -60,5 +70,15 @@ export function normalizeProject(v: unknown): ProjectDoc | null {
     updatedAt: typeof v.updatedAt === 'string' ? v.updatedAt : now,
     baseline: normalizePlan(v.baseline),
     planned: v.planned ? normalizePlan(v.planned) : null,
+    costOverrides: normalizeOverrides(v.costOverrides),
   };
+}
+
+function normalizeOverrides(v: unknown): Record<string, number> {
+  if (!isObject(v)) return {};
+  return Object.fromEntries(
+    Object.entries(v).filter(
+      (e): e is [string, number] => typeof e[1] === 'number' && Number.isFinite(e[1]) && e[1] >= 0,
+    ),
+  );
 }

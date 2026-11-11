@@ -34,6 +34,8 @@ export interface PlanState {
   startPlanning: () => void;
   setActiveKind: (kind: PlanKind) => void;
   setProjectName: (name: string) => void;
+  /** Sets (or with null, clears) a per-project price override. */
+  setCostOverride: (materialId: string, costPerUnit: number | null) => void;
   loadProject: (doc: ProjectDoc) => void;
   newProject: () => ProjectDoc;
   setSaveStatus: (status: SaveStatus) => void;
@@ -120,6 +122,14 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
 
   setProjectName: (name) => {
     set((s) => ({ project: { ...s.project, name, updatedAt: new Date().toISOString() } }));
+  },
+
+  setCostOverride: (materialId, cost) => {
+    set((s) => {
+      const rest = Object.entries(s.project.costOverrides).filter(([k]) => k !== materialId);
+      const costOverrides = Object.fromEntries(cost === null ? rest : [...rest, [materialId, cost]]);
+      return { project: { ...s.project, costOverrides, updatedAt: new Date().toISOString() } };
+    });
   },
 
   loadProject: (doc) => {
