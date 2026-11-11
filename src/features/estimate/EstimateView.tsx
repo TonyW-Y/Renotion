@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ArrowRight, Calculator, Info, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, Calculator, Info, Printer, RotateCcw, Sparkles } from 'lucide-react';
 import { Button, CommitInput, Tooltip } from '@/components/ui';
 import { getMaterial } from '@/core/estimate/defaultCosts';
 import type { Estimate, LineItem } from '@/core/estimate/costs';
@@ -207,17 +207,28 @@ export function EstimateView() {
             </p>
           </div>
           {hasPlanned && (
-            <div className="rounded-2xl bg-surface px-5 py-4 shadow-panel sm:text-right">
-              <p className="text-xs font-medium text-fg-muted">Estimated total</p>
-              <motion.p
-                key={estimate.total}
-                initial={{ opacity: 0.4, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-accent-gradient tabular font-mono text-3xl font-semibold"
-                data-testid="estimate-total"
+            <div className="flex items-center gap-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  window.print();
+                }}
               >
-                {formatMoney(estimate.total)}
-              </motion.p>
+                <Printer className="size-3.5" /> Print summary
+              </Button>
+              <div className="rounded-2xl bg-surface px-5 py-4 shadow-panel sm:text-right">
+                <p className="text-xs font-medium text-fg-muted">Estimated total</p>
+                <motion.p
+                  key={estimate.total}
+                  initial={{ opacity: 0.4, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-accent-gradient tabular font-mono text-3xl font-semibold"
+                  data-testid="estimate-total"
+                >
+                  {formatMoney(estimate.total)}
+                </motion.p>
+              </div>
             </div>
           )}
         </div>
