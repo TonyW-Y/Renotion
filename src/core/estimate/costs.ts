@@ -1,5 +1,6 @@
 import type { ChangeEvent } from '../diff';
 import type { Material, MaterialUnit } from '../types';
+import { openingMaterialId } from '../openings';
 import { furnitureMaterialId, getMaterial } from './defaultCosts';
 import {
   baseboardMetres,
@@ -68,6 +69,7 @@ export const DRYWALL_MATERIAL = 'drywall-sheet';
 export const DOOR_MATERIAL = 'interior-door';
 export const WINDOW_MATERIAL = 'window-unit';
 export const REMOVAL_MATERIAL = 'wall-removal';
+export const REFINISH_MATERIAL = 'opening-refinish';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -121,6 +123,7 @@ export function buildEstimate(
   };
 
   const counts = new Map<string, Accumulator>();
+  const refinish = new Map<string, Accumulator>();
   const furniture = new Map<string, Accumulator & { factor: number }>();
 
   for (const e of events) {
@@ -177,8 +180,15 @@ export function buildEstimate(
         break;
       }
       case 'openingAdded': {
-        const m = getMaterial(e.kind === 'door' ? DOOR_MATERIAL : WINDOW_MATERIAL);
+        const m = getMaterial(
+          openingMaterialId({ type: e.kind, ...(e.style ? { style: e.style } : {}) }),
+        );
         if (m) pool(counts, e.roomKey, e.roomName, m, 1);
+        break;
+      }
+      case 'openingRefinished': {
+        const m = getMaterial(REFINISH_MATERIAL);
+        if (m) pool(refinish, e.roomKey, e.roomName, m, 1);
         break;
       }
       case 'openingRemoved':
@@ -227,6 +237,20 @@ export function buildEstimate(
         quantity: drywallSheets(a.amount, a.material.coverage),
         unit: 'sheet',
         basis: `${a.amount.toFixed(1)} m² of new wall + 10% waste`,
+      },
+      a.material,
+    );
+  }
+  for (const a of refinish.values()) {
+    push(
+      {
+        roomKey: a.roomKey,
+        roomName: a.roomName,
+        category: 'paint',
+        description: a.material.name,
+        quantity: a.amount,
+        unit: 'each',
+        basis: `${a.amount} × sand, prime & recolour`,
       },
       a.material,
     );

@@ -176,3 +176,43 @@ describe('diffPlans: furniture', () => {
     expect(diffPlans(base, planned).filter((e) => e.type === 'furnitureAdded')).toEqual([]);
   });
 });
+
+describe('diffPlans: door and window designs', () => {
+  const door = {
+    id: 'd',
+    wallId: 'w0',
+    type: 'door' as const,
+    offset: 2,
+    width: 0.9,
+    height: 2.03,
+    sillHeight: 0,
+  };
+  const base = run(room(), addOpening(door));
+  const withProps = (props: Partial<typeof door> & Record<string, unknown>): Plan => ({
+    ...base,
+    openings: base.openings.map((o) => ({ ...o, ...props })),
+  });
+
+  it('replaces a door when its design changes, carrying the new style', () => {
+    const events = diffPlans(base, withProps({ style: 'barn' }));
+    expect(events.map((e) => e.type).sort()).toEqual(['openingAdded', 'openingRemoved']);
+    expect(events.find((e) => e.type === 'openingAdded')).toMatchObject({ style: 'barn' });
+  });
+
+  it('replaces a door when it is resized (e.g. into a pet door)', () => {
+    const events = diffPlans(base, withProps({ height: 0.4, width: 0.3, style: 'pet' }));
+    expect(events.map((e) => e.type)).toContain('openingAdded');
+  });
+
+  it('reports a colour-only change as a refinish', () => {
+    const events = diffPlans(base, withProps({ color: '#2f4f4f' }));
+    expect(events).toEqual([
+      expect.objectContaining({ type: 'openingRefinished', openingId: 'd', kind: 'door' }),
+    ]);
+  });
+
+  it('does not refinish a brand-new opening', () => {
+    const planned = run(room(), addOpening({ ...door, color: '#2f4f4f' }));
+    expect(diffPlans(room(), planned).map((e) => e.type)).toEqual(['openingAdded']);
+  });
+});

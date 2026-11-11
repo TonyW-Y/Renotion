@@ -155,3 +155,34 @@ describe('buildEstimate: furniture', () => {
     expect(est.lines[0]?.unitCost).toBe(2000);
   });
 });
+
+describe('buildEstimate: door and window designs', () => {
+  const room = { roomKey: 'r1', roomName: 'Hall' };
+  it('prices each design with its own material', () => {
+    const est = buildEstimate([
+      { type: 'openingAdded', openingId: 'a', kind: 'door', width: 0.9, style: 'barn', ...room },
+      { type: 'openingAdded', openingId: 'b', kind: 'window', width: 1, style: 'grid', ...room },
+      { type: 'openingAdded', openingId: 'c', kind: 'door', width: 0.9, ...room },
+    ]);
+    expect(est.lines.map((l) => [l.materialId, l.unitCost, l.category]).sort()).toEqual([
+      ['door-barn', 650, 'doors'],
+      ['interior-door', 280, 'doors'],
+      ['window-grid', 690, 'windows'],
+    ]);
+  });
+
+  it('prices refinishing as paint work', () => {
+    const est = buildEstimate([
+      { type: 'openingRefinished', openingId: 'a', kind: 'door', ...room },
+      { type: 'openingRefinished', openingId: 'b', kind: 'window', ...room },
+    ]);
+    expect(est.lines).toEqual([
+      expect.objectContaining({
+        materialId: 'opening-refinish',
+        quantity: 2,
+        category: 'paint',
+        total: 150,
+      }),
+    ]);
+  });
+});

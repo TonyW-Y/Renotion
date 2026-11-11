@@ -41,7 +41,15 @@ export interface Opening {
   hinge?: 'start' | 'end';
   /** Doors: which side of the wall the leaf swings into. Default 'a' (left). */
   swing?: 'a' | 'b';
+  /** Design; defaults to 'slab' for doors and 'casement' for windows. */
+  style?: OpeningStyle;
+  /** Door leaf / window frame colour (#hex); the default finish when absent. */
+  color?: string;
 }
+
+export type DoorStyle = 'slab' | 'panel' | 'glass' | 'barn' | 'double' | 'pet';
+export type WindowStyle = 'casement' | 'double-hung' | 'slider' | 'picture' | 'grid' | 'bay';
+export type OpeningStyle = DoorStyle | WindowStyle;
 
 /** Rooms are derived from walls; this stores user data keyed by a stable room key. */
 export interface RoomMeta {

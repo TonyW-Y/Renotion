@@ -5,7 +5,8 @@ import { wallLength } from './geometry/walls';
 import { sizeFactor } from './furniture/placement';
 import { wallSideArea, wallSideRooms, type WallSides } from './estimate/quantities';
 import { resolveRooms, type ResolvedRoom } from './rooms';
-import type { ID, Opening, OpeningType, Plan, Wall } from './types';
+import { openingStyleOf } from './openings';
+import type { ID, Opening, OpeningStyle, OpeningType, Plan, Wall } from './types';
 
 export interface RoomRef {
   /** Room key in the planned plan, or null for the exterior. */
@@ -40,7 +41,15 @@ export type ChangeEvent =
     }
   | { type: 'wallAdded'; wallId: ID; length: number; height: number; shares: AreaShare[] }
   | ({ type: 'wallRemoved'; wallId: ID; length: number; height: number } & RoomRef)
-  | ({ type: 'openingAdded'; openingId: ID; kind: OpeningType; width: number } & RoomRef)
+  | ({
+      type: 'openingAdded';
+      openingId: ID;
+      kind: OpeningType;
+      width: number;
+      /** Design of the new unit (default design when absent). */
+      style?: OpeningStyle;
+    } & RoomRef)
+  | ({ type: 'openingRefinished'; openingId: ID; kind: OpeningType } & RoomRef)
   | ({ type: 'openingRemoved'; openingId: ID; kind: OpeningType; width: number } & RoomRef)
   | ({
       type: 'furnitureAdded';
@@ -184,16 +193,30 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
     a.type !== b.type ||
     a.wallId !== b.wallId ||
     Math.abs(a.offset - b.offset) > MOVE_TOLERANCE ||
-    Math.abs(a.width - b.width) > MOVE_TOLERANCE;
+    Math.abs(a.width - b.width) > MOVE_TOLERANCE ||
+    Math.abs(a.height - b.height) > MOVE_TOLERANCE ||
+    openingStyleOf(a) !== openingStyleOf(b);
 
   for (const o of planned.openings) {
     const old = baseOpenings.get(o.id);
-    if (old && !changed(old, o)) continue;
+    if (old && !changed(old, o)) {
+      // Same unit, new colour: just repaint / restain it.
+      if ((old.color ?? null) !== (o.color ?? null)) {
+        events.push({
+          type: 'openingRefinished',
+          openingId: o.id,
+          kind: o.type,
+          ...roomForWall(next, o.wallId),
+        });
+      }
+      continue;
+    }
     events.push({
       type: 'openingAdded',
       openingId: o.id,
       kind: o.type,
       width: o.width,
+      ...(o.style ? { style: o.style } : {}),
       ...roomForWall(next, o.wallId),
     });
   }

@@ -1,4 +1,5 @@
 import type { ChangeEvent } from '../diff';
+import { openingStyleInfo } from '../openings';
 import { halfDays, PHASE_ORDER, TEMPLATES, type TaskPhase, type TaskTemplate } from './templates';
 
 export interface TaskSpec {
@@ -86,7 +87,7 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
             TEMPLATES.openingAdded,
             e,
             1,
-            e.kind === 'door' ? 'New door' : 'New window',
+            `New ${e.style ? `${openingStyleInfo({ type: e.kind, style: e.style }).name.toLowerCase()} ` : ''}${e.kind}`,
           ),
         );
         break;
@@ -97,6 +98,18 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
         furnished.set(k, cur);
         break;
       }
+      case 'openingRefinished':
+        tasks.push(
+          ...chain(
+            `refinish:${e.openingId}`,
+            'openingRefinished',
+            TEMPLATES.openingRefinished,
+            e,
+            1,
+            e.kind === 'door' ? 'Door' : 'Window',
+          ),
+        );
+        break;
       case 'openingRemoved':
         tasks.push(
           ...chain(

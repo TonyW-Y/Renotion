@@ -227,6 +227,36 @@ export const OTHER_MATERIALS: readonly Material[] = [
     unit: 'each',
     wasteFactor: 0,
   },
+  // Door and window designs (see core/openings.ts).
+  ...(
+    [
+      ['door-panel', 'Four-panel prehung door', 'door', 340],
+      ['door-glass', 'Full-glass door', 'door', 540],
+      ['door-barn', 'Sliding barn door kit', 'door', 650],
+      ['door-double', 'French double doors', 'door', 980],
+      ['door-pet', 'Pet door flap', 'door', 140],
+      ['window-double-hung', 'Double-hung window', 'window', 610],
+      ['window-slider', 'Sliding window', 'window', 480],
+      ['window-picture', 'Picture window', 'window', 560],
+      ['window-grid', 'Colonial grid window', 'window', 690],
+      ['window-bay', 'Deep-sill window', 'window', 820],
+    ] as const
+  ).map(([id, name, category, costPerUnit]): Material => ({
+    id,
+    name,
+    category,
+    costPerUnit,
+    unit: 'each',
+    wasteFactor: 0,
+  })),
+  {
+    id: 'opening-refinish',
+    name: 'Door / window refinish',
+    category: 'paint',
+    costPerUnit: 75,
+    unit: 'each',
+    wasteFactor: 0,
+  },
   {
     id: 'wall-removal',
     name: 'Wall removal allowance',

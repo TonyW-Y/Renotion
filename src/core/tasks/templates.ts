@@ -111,6 +111,9 @@ export const TEMPLATES: Record<
     { step: 'install', title: 'Install unit', phase: 'finish', duration: 0.5 },
     { step: 'trim', title: 'Trim & caulk', phase: 'finish', duration: 0.5 },
   ],
+  openingRefinished: [
+    { step: 'refinish', title: 'Sand & refinish', phase: 'paint', duration: 0.5 },
+  ],
   roomFurnished: [
     {
       step: 'deliver',

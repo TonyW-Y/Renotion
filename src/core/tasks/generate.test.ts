@@ -102,3 +102,16 @@ describe('generateTasks: furniture', () => {
     expect(() => buildSchedule(tasks, '2026-01-05')).not.toThrow();
   });
 });
+
+describe('generateTasks: doors and windows', () => {
+  it('names new openings by design and adds refinish tasks', () => {
+    const tasks = generateTasks([
+      { type: 'openingAdded', openingId: 'o1', kind: 'door', width: 0.9, style: 'barn', ...room },
+      { type: 'openingRefinished', openingId: 'o2', kind: 'window', ...room },
+    ]);
+    expect(tasks.map((t) => t.title)).toContain('New sliding barn door: Install unit');
+    expect(tasks.find((t) => t.templateKey === 'openingRefinished.refinish')?.title).toBe(
+      'Window: Sand & refinish',
+    );
+  });
+});

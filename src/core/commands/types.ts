@@ -4,6 +4,7 @@ import type {
   FurnitureSize,
   ID,
   Opening,
+  OpeningStyle,
   RoomMeta,
   Vec2,
   Wall,
@@ -25,6 +26,8 @@ export interface OpeningPatch {
   offset?: number;
   hinge?: 'start' | 'end' | null;
   swing?: 'a' | 'b' | null;
+  style?: OpeningStyle | null;
+  color?: string | null;
 }
 
 export interface FurniturePatch {
