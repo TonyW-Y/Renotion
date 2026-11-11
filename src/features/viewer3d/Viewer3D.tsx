@@ -13,7 +13,8 @@ import { IconButton, Kbd, SegmentedControl, Tooltip, type SegmentOption } from '
 import type { Plan } from '@/core/types';
 import { useThemeColors } from '@/features/editor2d/useThemeColors';
 import { cn } from '@/lib/cn';
-import { selectActivePlan, usePlanStore } from '@/state/planStore';
+import { getPlan, type PlanKind } from '@/core/project';
+import { usePlanStore } from '@/state/planStore';
 import { useDerivedPlan } from '@/state/useDerivedPlan';
 import { useUiStore, type CameraMode } from '@/state/uiStore';
 import { CameraRig, type SceneBounds } from './CameraRig';
@@ -88,8 +89,29 @@ function usePointerLocked() {
 }
 
 /** Live 3D view of the active plan (react-three-fiber). */
+const COMPARE_OPTIONS: readonly SegmentOption<PlanKind>[] = [
+  {
+    value: 'baseline',
+    label: 'Before',
+    ariaLabel: 'Show current home',
+    tooltip: 'Your home today',
+  },
+  {
+    value: 'planned',
+    label: 'After',
+    ariaLabel: 'Show renovation',
+    tooltip: 'After the renovation',
+  },
+];
+
 export default function Viewer3D() {
-  const plan = usePlanStore(selectActivePlan);
+  const project = usePlanStore((s) => s.project);
+  const activeKind = usePlanStore((s) => s.activeKind);
+  // Before/after: view either version without changing which one you're editing.
+  const [viewKind, setViewKind] = useState<PlanKind | null>(null);
+  const shownKind = project.planned ? (viewKind ?? activeKind) : 'baseline';
+  const plan = getPlan(project, shownKind);
+  const interactive = shownKind === activeKind;
   const projectId = usePlanStore((s) => s.project.id);
   const mode = useUiStore((s) => s.cameraMode);
   const setMode = useUiStore((s) => s.setCameraMode);
@@ -177,6 +199,20 @@ export default function Viewer3D() {
       {/* Toolbar */}
       <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">
         <div className="pointer-events-auto flex items-center gap-1 rounded-xl bg-surface/85 p-1 shadow-float backdrop-blur-xl">
+          {project.planned && (
+            <>
+              <SegmentedControl
+                ariaLabel="Before or after"
+                size="sm"
+                value={shownKind}
+                onChange={(k) => {
+                  setViewKind(k === activeKind ? null : k);
+                }}
+                options={COMPARE_OPTIONS}
+              />
+              <div className="mx-0.5 h-4 w-px bg-border" />
+            </>
+          )}
           <SegmentedControl
             ariaLabel="Camera mode"
             size="sm"
@@ -214,6 +250,14 @@ export default function Viewer3D() {
           </Tooltip>
         </div>
       </div>
+
+      {!interactive && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
+          <span className="rounded-full bg-surface/85 px-3 py-1.5 text-xs text-fg-muted shadow-float backdrop-blur-xl">
+            Viewing {shownKind === 'baseline' ? 'your current home' : 'the renovation'} · read-only
+          </span>
+        </div>
+      )}
 
       {!hasWalls && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
