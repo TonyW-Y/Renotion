@@ -7,6 +7,7 @@ export type Tool = 'select' | 'wall' | 'door' | 'window' | 'delete';
 export type ViewMode = '2d' | 'split' | '3d';
 export type Theme = 'dark' | 'light';
 export type CameraMode = 'orbit' | 'top' | 'walk';
+export type Section = 'design' | 'estimate' | 'schedule' | 'budget';
 export type SelectionKind = 'wall' | 'opening' | 'room' | 'furniture';
 
 export interface Selection {
@@ -29,6 +30,7 @@ function initialTheme(): Theme {
 }
 
 export interface UiState {
+  section: Section;
   tool: Tool;
   viewMode: ViewMode;
   theme: Theme;
@@ -45,6 +47,7 @@ export interface UiState {
   selection: Selection | null;
   hover: Selection | null;
 
+  setSection: (section: Section) => void;
   setTool: (tool: Tool) => void;
   setViewMode: (mode: ViewMode) => void;
   setTheme: (theme: Theme) => void;
@@ -69,6 +72,7 @@ export interface UiState {
 export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
+      section: 'design',
       tool: 'select',
       viewMode: '2d',
       theme: initialTheme(),
@@ -82,6 +86,9 @@ export const useUiStore = create<UiState>()(
       selection: null,
       hover: null,
 
+      setSection: (section) => {
+        set({ section, hover: null });
+      },
       setTool: (tool) => {
         set((s) => ({ tool, selection: tool === 'select' ? s.selection : null }));
       },
