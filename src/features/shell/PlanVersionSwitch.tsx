@@ -2,6 +2,7 @@ import { Sparkles } from 'lucide-react';
 import { Button, SegmentedControl, Tooltip, type SegmentOption } from '@/components/ui';
 import type { PlanKind } from '@/core/project';
 import { usePlanStore } from '@/state/planStore';
+import { useUiStore } from '@/state/uiStore';
 
 const OPTIONS: readonly SegmentOption<PlanKind>[] = [
   { value: 'baseline', label: 'Current home', tooltip: 'Your home as it is today' },
@@ -15,13 +16,17 @@ export function PlanVersionSwitch() {
   const activeKind = usePlanStore((s) => s.activeKind);
   const setActiveKind = usePlanStore((s) => s.setActiveKind);
   const startPlanning = usePlanStore((s) => s.startPlanning);
+  const select = useUiStore((s) => s.select);
 
   if (hasPlanned) {
     return (
       <SegmentedControl
         ariaLabel="Plan version"
         value={activeKind}
-        onChange={setActiveKind}
+        onChange={(kind) => {
+          select(null);
+          setActiveKind(kind);
+        }}
         options={OPTIONS}
       />
     );
@@ -38,7 +43,15 @@ export function PlanVersionSwitch() {
         }
       >
         <span className="inline-flex">
-          <Button size="sm" variant="secondary" disabled={!hasWalls} onClick={startPlanning}>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!hasWalls}
+            onClick={() => {
+              select(null);
+              startPlanning();
+            }}
+          >
             <Sparkles className="size-3.5 text-accent" />
             Start planning
           </Button>
