@@ -43,6 +43,7 @@ export function PlanCanvas() {
   const pan = useUiStore((s) => s.pan);
   const tool = useUiStore((s) => s.tool);
   const units = useUiStore((s) => s.units);
+  const showRoomLabels = useUiStore((s) => s.showRoomLabels);
   const selection = useUiStore((s) => s.selection);
   const hover = useUiStore((s) => s.hover);
   const plan = usePlanStore(selectActivePlan);
@@ -203,6 +204,21 @@ export function PlanCanvas() {
               hover={hover}
               danger={tool === 'delete'}
             />
+            {/* Labels sit under furniture so they never hide what's in the room. */}
+            <RoomLabels
+              rooms={
+                showRoomLabels
+                  ? rooms
+                  : rooms.filter(
+                      (r) =>
+                        (selection?.kind === 'room' && selection.id === r.key) ||
+                        (hover?.kind === 'room' && hover.id === r.key),
+                    )
+              }
+              view={view}
+              colors={colors}
+              units={units}
+            />
             <FurnitureShapes
               items={previewPlan.furniture}
               view={view}
@@ -211,7 +227,6 @@ export function PlanCanvas() {
               hover={hover}
               danger={tool === 'delete'}
             />
-            <RoomLabels rooms={rooms} view={view} colors={colors} units={units} />
 
             {/* Dimensions */}
             {selectedWall && (

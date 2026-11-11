@@ -78,6 +78,10 @@ export function useEditorShortcuts(): void {
         else setTool('select');
         return;
       }
+      if (key === 'l') {
+        useUiStore.getState().toggleRoomLabels();
+        return;
+      }
       const view = VIEW_SHORTCUTS[e.key];
       if (view) {
         setViewMode(view);

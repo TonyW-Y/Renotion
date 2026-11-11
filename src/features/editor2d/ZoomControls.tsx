@@ -1,4 +1,4 @@
-import { Maximize, Minus, Plus } from 'lucide-react';
+import { Maximize, Minus, Plus, Tag, TagX } from 'lucide-react';
 import { IconButton, Tooltip } from '@/components/ui';
 import { useUiStore, ZOOM_MAX, ZOOM_MIN } from '@/state/uiStore';
 
@@ -6,6 +6,8 @@ export function ZoomControls({ onFit }: { onFit: () => void }) {
   const zoom = useUiStore((s) => s.zoom);
   const zoomBy = useUiStore((s) => s.zoomBy);
   const resetView = useUiStore((s) => s.resetView);
+  const showLabels = useUiStore((s) => s.showRoomLabels);
+  const toggleLabels = useUiStore((s) => s.toggleRoomLabels);
 
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl bg-surface/85 p-1 shadow-float backdrop-blur-xl">
@@ -39,6 +41,17 @@ export function ZoomControls({ onFit }: { onFit: () => void }) {
         <Plus className="size-3.5" />
       </IconButton>
       <div className="mx-0.5 h-4 w-px bg-border" />
+      <Tooltip content={`${showLabels ? 'Hide' : 'Show'} room labels`} shortcut="L" side="top">
+        <IconButton
+          size="sm"
+          label={showLabels ? 'Hide room labels' : 'Show room labels'}
+          aria-pressed={showLabels}
+          className={showLabels ? 'text-accent' : undefined}
+          onClick={toggleLabels}
+        >
+          {showLabels ? <Tag className="size-3.5" /> : <TagX className="size-3.5" />}
+        </IconButton>
+      </Tooltip>
       <Tooltip content="Zoom to fit" side="top">
         <IconButton size="sm" label="Zoom to fit" onClick={onFit}>
           <Maximize className="size-3.5" />
