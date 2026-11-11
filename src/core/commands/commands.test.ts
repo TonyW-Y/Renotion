@@ -107,6 +107,27 @@ describe('commands', () => {
     expectRoundTrip(plan, cmd);
   });
 
+  it('keeps T-junction dividers attached when their host wall moves', () => {
+    // Rectangle 0..6 × 0..4 with a divider from the middle of the bottom wall.
+    let plan = createEmptyPlan();
+    plan = applyCommand(plan, addWall('b', { x: 0, y: 0 }, { x: 6, y: 0 }));
+    plan = applyCommand(plan, addWall('r', { x: 6, y: 0 }, { x: 6, y: 4 }));
+    plan = applyCommand(plan, addWall('m', { x: 3, y: 0 }, { x: 3, y: 4 }));
+
+    // Moving the bottom wall down by 1 drags the divider's foot with it.
+    const move = must(translateWall(plan, 'b', { x: 0, y: -1 }));
+    const after = applyCommand(plan, move);
+    expect(after.walls.find((w) => w.id === 'm')?.start).toEqual({ x: 3, y: -1 });
+    expectRoundTrip(plan, move);
+
+    // Moving the corner (6,0) to (6,-2) slides the foot to the same fraction along the wall.
+    const corner = must(moveCorner(plan, { x: 6, y: 0 }, { x: 6, y: -2 }));
+    expect(applyCommand(plan, corner).walls.find((w) => w.id === 'm')?.start).toEqual({
+      x: 3,
+      y: -1,
+    });
+  });
+
   it('sets a wall length along its direction', () => {
     const plan = basePlan();
     const cmd = setWallLength(plan, 'w1', 6);

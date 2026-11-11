@@ -1,4 +1,4 @@
-import { distance } from '../geometry/vec2';
+import { distance, lerp, projectOntoSegment } from '../geometry/vec2';
 import { NODE_TOLERANCE } from '../geometry/wallGraph';
 import { wallDirection } from '../geometry/walls';
 import {
@@ -11,6 +11,7 @@ import {
   type Vec2,
   type Wall,
 } from '../types';
+import { applyCommand } from './apply';
 import type { Command, OpeningPatch, WallPatch } from './types';
 
 /** Captures the current values of the patched keys (missing → null) for inversion. */
@@ -55,6 +56,45 @@ export function setWallProps(plan: Plan, wallId: ID, to: WallPatch): Command | n
   return { type: 'setWallProps', wallId, from: snapshot(wall, to), to };
 }
 
+/**
+ * After some walls move, endpoints of other walls that sat on them (T-junctions)
+ * slide to the same relative position on the moved wall, so dividers stay attached.
+ */
+function followJunctions(plan: Plan, moves: readonly Command[], tol: number): Command[] {
+  const after = applyCommand(plan, { type: 'batch', label: '', commands: [...moves] });
+  const moved = new Set<string>();
+  const touched = new Set<string>();
+  for (const c of moves) {
+    if (c.type !== 'moveWallEndpoint') continue;
+    moved.add(c.wallId);
+    touched.add(`${c.wallId}:${c.endpoint}`);
+  }
+
+  const extra: Command[] = [];
+  for (const w of plan.walls) {
+    for (const endpoint of ['start', 'end'] as const) {
+      if (touched.has(`${w.id}:${endpoint}`)) continue;
+      const q = w[endpoint];
+      for (const host of plan.walls) {
+        if (host.id === w.id || !moved.has(host.id)) continue;
+        const proj = projectOntoSegment(q, host.start, host.end);
+        if (proj.distance > tol || proj.t <= 0.001 || proj.t >= 0.999) continue;
+        const nextHost = after.walls.find((x) => x.id === host.id);
+        if (!nextHost) continue;
+        extra.push({
+          type: 'moveWallEndpoint',
+          wallId: w.id,
+          endpoint,
+          from: { ...q },
+          to: lerp(nextHost.start, nextHost.end, proj.t),
+        });
+        break;
+      }
+    }
+  }
+  return extra;
+}
+
 /** Moves every wall endpoint at `at` (a shared corner) to `to`. */
 export function moveCorner(plan: Plan, at: Vec2, to: Vec2, tol = NODE_TOLERANCE): Command | null {
   const commands: Command[] = [];
@@ -72,9 +112,10 @@ export function moveCorner(plan: Plan, at: Vec2, to: Vec2, tol = NODE_TOLERANCE)
     }
   }
   if (commands.length === 0) return null;
-  return commands.length === 1
-    ? (commands[0] ?? null)
-    : { type: 'batch', label: 'Move corner', commands };
+  const all = [...commands, ...followJunctions(plan, commands, tol)];
+  return all.length === 1
+    ? (all[0] ?? null)
+    : { type: 'batch', label: 'Move corner', commands: all };
 }
 
 /** Moves a whole wall by `delta`, dragging connected corners along. */
@@ -82,11 +123,23 @@ export function translateWall(plan: Plan, wallId: ID, delta: Vec2): Command | nu
   const wall = plan.walls.find((w) => w.id === wallId);
   if (!wall) return null;
   const moved = (p: Vec2) => ({ x: p.x + delta.x, y: p.y + delta.y });
-  const commands = [
-    moveCorner(plan, wall.start, moved(wall.start)),
-    moveCorner(plan, wall.end, moved(wall.end)),
-  ].filter((c): c is Command => c !== null);
-  return { type: 'batch', label: 'Move wall', commands };
+  const commands: Command[] = [];
+  for (const w of plan.walls) {
+    for (const endpoint of ['start', 'end'] as const) {
+      const q = w[endpoint];
+      if (distance(q, wall.start) <= NODE_TOLERANCE || distance(q, wall.end) <= NODE_TOLERANCE) {
+        commands.push({
+          type: 'moveWallEndpoint',
+          wallId: w.id,
+          endpoint,
+          from: { ...q },
+          to: moved(q),
+        });
+      }
+    }
+  }
+  const all = [...commands, ...followJunctions(plan, commands, NODE_TOLERANCE)];
+  return { type: 'batch', label: 'Move wall', commands: all };
 }
 
 /** Changes a wall's length by moving its end corner along its direction. */

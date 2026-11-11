@@ -1,18 +1,47 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { MousePointerClick, X } from 'lucide-react';
 import { IconButton, PanelSection, PropRow } from '@/components/ui';
-import { createEmptyPlan, DEFAULT_WALL_HEIGHT, DEFAULT_WALL_THICKNESS } from '@/core/types';
-import { formatArea, formatLength } from '@/core/units';
+import { DEFAULT_WALL_HEIGHT, DEFAULT_WALL_THICKNESS } from '@/core/types';
+import { formatLength } from '@/core/units';
+import {
+  OpeningInspector,
+  PlanOverview,
+  RoomInspector,
+  WallInspector,
+} from '@/features/inspector/Inspectors';
+import { selectActivePlan, usePlanStore } from '@/state/planStore';
+import { useDerivedPlan } from '@/state/useDerivedPlan';
 import { useUiStore } from '@/state/uiStore';
 
 const GRID_SNAP = 0.1;
-// Placeholder until the plan store lands in Phase 1.
-const plan = createEmptyPlan();
 
 export function PropertiesPanel() {
   const open = useUiStore((s) => s.rightPanelOpen);
   const setOpen = useUiStore((s) => s.setRightPanelOpen);
   const units = useUiStore((s) => s.units);
+  const selection = useUiStore((s) => s.selection);
+  const plan = usePlanStore(selectActivePlan);
+  const { rooms } = useDerivedPlan(plan);
+
+  const wall =
+    selection?.kind === 'wall' ? plan.walls.find((w) => w.id === selection.id) : undefined;
+  const opening =
+    selection?.kind === 'opening' ? plan.openings.find((o) => o.id === selection.id) : undefined;
+  const openingWall = opening && plan.walls.find((w) => w.id === opening.wallId);
+  const room = selection?.kind === 'room' ? rooms.find((r) => r.key === selection.id) : undefined;
+  const inspector = wall ? (
+    <WallInspector key={wall.id} wall={wall} plan={plan} units={units} />
+  ) : opening && openingWall ? (
+    <OpeningInspector
+      key={opening.id}
+      opening={opening}
+      wall={openingWall}
+      plan={plan}
+      units={units}
+    />
+  ) : room ? (
+    <RoomInspector key={room.key} room={room} units={units} />
+  ) : null;
 
   return (
     <AnimatePresence initial={false}>
@@ -41,24 +70,22 @@ export function PropertiesPanel() {
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <PanelSection title="Selection">
-              <div className="flex flex-col items-center rounded-xl border border-dashed border-border-strong px-4 py-6 text-center">
-                <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-fg/[0.05]">
-                  <MousePointerClick className="size-4 text-fg-subtle" />
+            {inspector ?? (
+              <PanelSection title="Selection">
+                <div className="flex flex-col items-center rounded-xl border border-dashed border-border-strong px-4 py-6 text-center">
+                  <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-fg/[0.05]">
+                    <MousePointerClick className="size-4 text-fg-subtle" />
+                  </div>
+                  <p className="text-[13px] font-medium text-fg">Nothing selected</p>
+                  <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+                    Click a wall, opening or room to edit its dimensions and finishes.
+                  </p>
                 </div>
-                <p className="text-[13px] font-medium text-fg">Nothing selected</p>
-                <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-                  Click a wall, opening or room to edit its dimensions and finishes.
-                </p>
-              </div>
-            </PanelSection>
+              </PanelSection>
+            )}
+            {inspector && <div className="border-b border-border" />}
 
-            <PanelSection title="Plan">
-              <PropRow label="Walls" value={plan.walls.length} />
-              <PropRow label="Openings" value={plan.openings.length} />
-              <PropRow label="Rooms" value={plan.rooms.length} />
-              <PropRow label="Floor area" value={formatArea(0, units)} />
-            </PanelSection>
+            <PlanOverview plan={plan} rooms={rooms} units={units} />
 
             <PanelSection title="Defaults">
               <PropRow label="Wall thickness" value={formatLength(DEFAULT_WALL_THICKNESS, units)} />
