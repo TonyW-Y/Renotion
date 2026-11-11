@@ -22,7 +22,12 @@ import {
   WallShapes,
 } from './shapes';
 import { useCanvasInteraction } from './useCanvasInteraction';
-import { FurnitureGhostShape, FurnitureShapes, RotateHandle } from './furnitureShapes';
+import {
+  FurnitureGhostShape,
+  FurnitureShapes,
+  ResizeHandle,
+  RotateHandle,
+} from './furnitureShapes';
 import { usePatternImages } from './usePatternImages';
 import { useThemeColors } from './useThemeColors';
 import { getMaterial } from '@/core/estimate/defaultCosts';
@@ -311,7 +316,16 @@ export function PlanCanvas() {
 
             {/* Furniture rotate handle + placement ghost */}
             {selectedFurniture && tool === 'select' && (
-              <RotateHandle item={selectedFurniture} view={view} colors={colors} />
+              <>
+                <RotateHandle item={selectedFurniture} view={view} colors={colors} />
+                <ResizeHandle
+                  item={selectedFurniture}
+                  view={view}
+                  colors={colors}
+                  units={units}
+                  active={ix.resizing}
+                />
+              </>
             )}
             {ix.furnitureGhost && (
               <FurnitureGhostShape

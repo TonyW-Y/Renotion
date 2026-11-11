@@ -1,8 +1,10 @@
-import { Circle, Group, Line, Rect } from 'react-konva';
+import { Circle, Group, Label, Line, Rect, Tag, Text } from 'react-konva';
 import { furnitureFootprint, modelFor } from '@/core/furniture/placement';
 import type { FurnitureItem } from '@/core/types';
 import type { Selection } from '@/state/uiStore';
-import { rotateHandleAt } from './useCanvasInteraction';
+import { formatLength, type UnitSystem } from '@/core/units';
+import { FONT_MONO } from './shapes';
+import { resizeHandleAt, rotateHandleAt } from './useCanvasInteraction';
 import type { CanvasColors } from './useThemeColors';
 import { flat, toScreen, type View } from './viewport';
 
@@ -182,6 +184,54 @@ export function RotateHandle({
         strokeWidth={2}
       />
       <Circle x={b.x} y={b.y} radius={2} fill={colors.accent} />
+    </>
+  );
+}
+
+/** Square corner grip for resizing the selected item, plus a live size label while dragging. */
+export function ResizeHandle({
+  item,
+  view,
+  colors,
+  units,
+  active,
+}: {
+  item: FurnitureItem;
+  view: View;
+  colors: CanvasColors;
+  units: UnitSystem;
+  active: boolean;
+}) {
+  const h = resizeHandleAt(item);
+  const m = modelFor(item);
+  if (!h || !m) return null;
+  const p = toScreen(h, view);
+  const size = 9;
+  const fmt = (v: number) => formatLength(v, units, { decimals: 2, fraction: 2 });
+  return (
+    <>
+      <Rect
+        x={p.x - size / 2}
+        y={p.y - size / 2}
+        width={size}
+        height={size}
+        cornerRadius={2}
+        fill={active ? colors.accent : colors.surface}
+        stroke={colors.accent}
+        strokeWidth={2}
+      />
+      {active && (
+        <Label x={p.x + 12} y={p.y - 30}>
+          <Tag fill={colors.accent} cornerRadius={6} />
+          <Text
+            text={`${fmt(m.width)} × ${fmt(m.depth)}`}
+            fontFamily={FONT_MONO}
+            fontSize={11}
+            padding={6}
+            fill="#ffffff"
+          />
+        </Label>
+      )}
     </>
   );
 }

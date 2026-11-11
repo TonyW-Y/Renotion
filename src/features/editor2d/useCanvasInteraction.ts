@@ -11,7 +11,13 @@ import {
   translateWall,
   type Command,
 } from '@/core/commands';
-import { canPlaceFurniture, furnitureFootprint, modelFor } from '@/core/furniture/placement';
+import { FURNITURE_BY_ID } from '@/core/furniture/catalog';
+import {
+  canPlaceFurniture,
+  clampFurnitureSize,
+  furnitureFootprint,
+  modelFor,
+} from '@/core/furniture/placement';
 import { cornerAt, hitTest } from '@/core/geometry/hitTest';
 import { snapPoint, snapToGrid, type SnapResult } from '@/core/geometry/snapping';
 import { distance, equals, pointToSegmentDistance, sub } from '@/core/geometry/vec2';
@@ -26,6 +32,7 @@ import {
   DEFAULT_DOOR,
   DEFAULT_WINDOW,
   type FurnitureItem,
+  type FurnitureSize,
   type Opening,
   type Plan,
   type Vec2,
@@ -57,7 +64,18 @@ type Drag =
       position: Vec2;
       moved: boolean;
     }
-  | { kind: 'rotate'; sx: number; sy: number; itemId: string; rotation: number; moved: boolean };
+  | { kind: 'rotate'; sx: number; sy: number; itemId: string; rotation: number; moved: boolean }
+  | {
+      kind: 'resize';
+      sx: number;
+      sy: number;
+      itemId: string;
+      /** The corner diagonally opposite the handle stays put. */
+      anchor: Vec2;
+      size: FurnitureSize;
+      position: Vec2;
+      moved: boolean;
+    };
 
 const ROTATE_HANDLE_GAP = 0.35;
 const FURNITURE_GRID = 0.05;
@@ -65,6 +83,27 @@ const snapAngleRad = (a: number, stepDeg: number) => {
   const step = (stepDeg * Math.PI) / 180;
   return Math.round(a / step) * step;
 };
+
+/** The item's local axes in plan space: x = width, y = depth (front is −y). */
+function itemAxes(rotation: number) {
+  return {
+    ex: { x: Math.cos(rotation), y: Math.sin(rotation) },
+    ey: { x: -Math.sin(rotation), y: Math.cos(rotation) },
+  };
+}
+
+/** Where the resize handle sits: the item's back-right corner. */
+export function resizeHandleAt(
+  item: Pick<FurnitureItem, 'modelId' | 'position' | 'rotation' | 'size'>,
+): Vec2 | null {
+  const m = modelFor(item);
+  if (!m) return null;
+  const { ex, ey } = itemAxes(item.rotation);
+  return {
+    x: item.position.x + ex.x * (m.width / 2) + ey.x * (m.depth / 2),
+    y: item.position.y + ex.y * (m.width / 2) + ey.y * (m.depth / 2),
+  };
+}
 
 /** Where the rotate handle of a furniture item sits (in front of it). */
 export function rotateHandleAt(
@@ -115,6 +154,8 @@ export interface CanvasInteraction {
   onDragLeave: () => void;
   hoverCorner: Vec2 | null;
   activeCorner: Vec2 | null;
+  /** True while a furniture resize drag is in progress. */
+  resizing: boolean;
   cursor: string;
 }
 
@@ -271,6 +312,10 @@ export function useCanvasInteraction(
         return drag.moved
           ? setFurnitureProps(plan, drag.itemId, { rotation: drag.rotation })
           : null;
+      case 'resize':
+        return drag.moved
+          ? setFurnitureProps(plan, drag.itemId, { size: drag.size, position: drag.position })
+          : null;
       default:
         return null;
     }
@@ -339,6 +384,25 @@ export function useCanvasInteraction(
         const { selection } = useUiStore.getState();
         if (selection?.kind === 'furniture') {
           const item = plan.furniture.find((f) => f.id === selection.id);
+          const grip = item && resizeHandleAt(item);
+          const m = item && modelFor(item);
+          if (item && m && grip && distance(grip, world) <= CORNER_PICK_PX / view.s) {
+            const { ex, ey } = itemAxes(item.rotation);
+            setDrag({
+              kind: 'resize',
+              sx: s.x,
+              sy: s.y,
+              itemId: item.id,
+              anchor: {
+                x: item.position.x - ex.x * (m.width / 2) - ey.x * (m.depth / 2),
+                y: item.position.y - ex.y * (m.width / 2) - ey.y * (m.depth / 2),
+              },
+              size: { width: m.width, depth: m.depth, height: m.height },
+              position: item.position,
+              moved: false,
+            });
+            return;
+          }
           const handle = item && rotateHandleAt(item);
           if (item && handle && distance(handle, world) <= CORNER_PICK_PX / view.s) {
             setDrag({
@@ -456,6 +520,35 @@ export function useCanvasInteraction(
           );
           return;
         }
+        case 'resize': {
+          const f = plan.furniture.find((x) => x.id === drag.itemId);
+          const base = f && FURNITURE_BY_ID.get(f.modelId);
+          if (!f || !base) return;
+          const { ex, ey } = itemAxes(f.rotation);
+          const rel = { x: world.x - drag.anchor.x, y: world.y - drag.anchor.y };
+          const snap = (v: number) => Math.round(v / FURNITURE_GRID) * FURNITURE_GRID;
+          let width = snap(rel.x * ex.x + rel.y * ex.y);
+          let depth = snap(rel.x * ey.x + rel.y * ey.y);
+          let height = f.size?.height ?? base.height;
+          if (e.shiftKey) {
+            // Keep the catalogue proportions (including height).
+            const k = Math.max(width / base.width, depth / base.depth);
+            width = base.width * k;
+            depth = base.depth * k;
+            height = base.height * k;
+          }
+          const size = clampFurnitureSize(base, { width, depth, height });
+          const position = {
+            x: drag.anchor.x + ex.x * (size.width / 2) + ey.x * (size.depth / 2),
+            y: drag.anchor.y + ex.y * (size.width / 2) + ey.y * (size.depth / 2),
+          };
+          setDrag(
+            canPlaceFurniture({ ...f, size, position }, plan)
+              ? { ...drag, size, position, moved: true }
+              : { ...drag, moved: true },
+          );
+          return;
+        }
         case 'opening': {
           if (!moved && !drag.moved) return;
           const o = plan.openings.find((x) => x.id === drag.openingId);
@@ -532,7 +625,8 @@ export function useCanvasInteraction(
           drag?.kind === 'wall' ||
           drag?.kind === 'opening' ||
           drag?.kind === 'furniture' ||
-          drag?.kind === 'rotate'
+          drag?.kind === 'rotate' ||
+          drag?.kind === 'resize'
           ? 'grabbing'
           : hoverCorner
             ? 'move'
@@ -598,6 +692,7 @@ export function useCanvasInteraction(
     },
     hoverCorner,
     activeCorner: drag?.kind === 'corner' && drag.moved ? drag.to : null,
+    resizing: drag?.kind === 'resize' && drag.moved,
     cursor,
   };
 }
