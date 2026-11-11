@@ -268,3 +268,22 @@ describe('diffPlans: furniture with your own price', () => {
     ]);
   });
 });
+
+describe('diffPlans: ceilings', () => {
+  const key = () => detectRooms(room().walls)[0]?.key ?? '';
+  it('reports a new ceiling finish with the room area', () => {
+    const base = room();
+    const planned = run(
+      base,
+      setRoomMeta(null, { key: key(), name: 'Den', ceilingMaterial: 'ceiling-wood-planks' }),
+    );
+    expect(diffPlans(base, planned)).toEqual([
+      expect.objectContaining({
+        type: 'ceilingChanged',
+        to: 'ceiling-wood-planks',
+        area: 12,
+        roomName: 'Den',
+      }),
+    ]);
+  });
+});

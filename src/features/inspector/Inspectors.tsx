@@ -35,7 +35,12 @@ import {
   type SegmentOption,
 } from '@/components/ui';
 import { ColorSwatches } from '@/features/materials/ColorSwatches';
-import { FloorPicker, PaintPicker, WallTexturePicker } from '@/features/materials/MaterialPicker';
+import {
+  CeilingTexturePicker,
+  FloorPicker,
+  PaintPicker,
+  WallTexturePicker,
+} from '@/features/materials/MaterialPicker';
 import { OpeningDesignPicker } from './OpeningDesignPicker';
 import { cn } from '@/lib/cn';
 import { usePlanStore } from '@/state/planStore';
@@ -488,6 +493,77 @@ export function OpeningInspector({
 
 /* ------------------------------------------------------------------ */
 
+/** Paint or textured finish (with optional recolour) for a room's ceiling. */
+function CeilingFinish({ room }: { room: ResolvedRoom }) {
+  const execute = usePlanStore((s) => s.execute);
+  const setShowCeilings = useUiStore((s) => s.setShowCeilings);
+  const current = getMaterial(room.meta?.ceilingMaterial);
+  const textured = current?.category === 'ceiling';
+  const [mode, setMode] = useState<'paint' | 'texture'>(textured ? 'texture' : 'paint');
+  const keep = {
+    key: room.key,
+    name: room.name,
+    ...(room.meta?.floorMaterial ? { floorMaterial: room.meta.floorMaterial } : {}),
+    ...(room.meta?.floorTint ? { floorTint: room.meta.floorTint } : {}),
+  };
+  const apply = (ceilingMaterial: string | null, ceilingTint?: string | null) => {
+    execute(
+      setRoomMeta(room.meta, {
+        ...keep,
+        ...(ceilingMaterial ? { ceilingMaterial } : {}),
+        ...(ceilingMaterial && ceilingTint ? { ceilingTint } : {}),
+      }),
+    );
+    // Make the new ceiling visible in 3D straight away.
+    if (ceilingMaterial) setShowCeilings(true);
+  };
+  return (
+    <div className="space-y-3">
+      <SegmentedControl
+        ariaLabel="Ceiling finish type"
+        value={mode}
+        className="w-full [&>*]:flex-1"
+        options={FINISH_MODES}
+        onChange={setMode}
+      />
+      {mode === 'paint' ? (
+        <PaintPicker
+          label="Ceiling paint"
+          value={textured ? undefined : room.meta?.ceilingMaterial}
+          onChange={(id) => {
+            apply(id);
+          }}
+        />
+      ) : (
+        <>
+          <CeilingTexturePicker
+            value={textured ? room.meta?.ceilingMaterial : undefined}
+            onChange={(id) => {
+              apply(id);
+            }}
+          />
+          {textured && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-fg-muted">Colour</p>
+              <ColorSwatches
+                label="Ceiling colour"
+                value={room.meta?.ceilingTint}
+                original={current.colorHex}
+                onChange={(hex) => {
+                  apply(room.meta?.ceilingMaterial ?? null, hex);
+                }}
+              />
+            </div>
+          )}
+        </>
+      )}
+      <p className="text-[11px] leading-relaxed text-fg-subtle">
+        See it in 3D with the ceiling toggle, or walk through the room.
+      </p>
+    </div>
+  );
+}
+
 export function RoomInspector({ room, units }: { room: ResolvedRoom; units: UnitSystem }) {
   const execute = usePlanStore((s) => s.execute);
   const planned = usePlanStore((s) => s.activeKind === 'planned');
@@ -496,6 +572,7 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
     key: room.key,
     name: room.name,
     ...(room.meta?.ceilingMaterial ? { ceilingMaterial: room.meta.ceilingMaterial } : {}),
+    ...(room.meta?.ceilingTint ? { ceilingTint: room.meta.ceilingTint } : {}),
   };
   return (
     <>
@@ -562,6 +639,12 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
             Record what’s there today. Only changes you make after “Start planning” are priced.
           </p>
         )}
+      </PanelSection>
+      <PanelSection
+        title={planned ? 'New ceiling' : 'Existing ceiling'}
+        className="border-b-0 pt-0"
+      >
+        <CeilingFinish key={room.key} room={room} />
       </PanelSection>
     </>
   );

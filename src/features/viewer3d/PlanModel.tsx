@@ -10,6 +10,7 @@ import type { Opening, Plan, Wall } from '@/core/types';
 import { useUiStore, type Selection } from '@/state/uiStore';
 import { getMaterial } from '@/core/estimate/defaultCosts';
 import {
+  useSurfaceMaterial,
   useTexturedFloor,
   useWallSideMaterial,
   wallEdgeMaterial,
@@ -296,15 +297,31 @@ function RoomFloor(props: FloorProps) {
   return <PlainFloor {...props} color={m?.colorHex} />;
 }
 
-function RoomCeiling({ room, height }: { room: ResolvedRoom; height: number }) {
+function RoomCeiling({
+  room,
+  height,
+  accent,
+}: {
+  room: ResolvedRoom;
+  height: number;
+  accent: string;
+}) {
   const geo = useMemo(() => roomGeometry(room), [room]);
   useEffect(() => () => geo.dispose(), [geo]);
+  const material = useSurfaceMaterial(
+    room.meta?.ceilingMaterial,
+    room.meta?.ceilingTint,
+    'none',
+    accent,
+    'ceiling',
+  );
   return (
     <mesh
       geometry={geo}
-      material={MATERIALS.ceiling}
+      material={material}
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, height, 0]}
+      receiveShadow
     />
   );
 }
@@ -378,7 +395,7 @@ export function PlanModel({
       {ceilings &&
         rooms.map((r) => {
           const h = Math.min(...r.wallIds.map((id) => wallsById.get(id)?.height ?? 2.44));
-          return <RoomCeiling key={`c-${r.key}`} room={r} height={h} />;
+          return <RoomCeiling key={`c-${r.key}`} room={r} height={h} accent={accent} />;
         })}
     </group>
   );

@@ -69,6 +69,17 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
           ...chain(`floor:${roomId(e.roomKey)}`, 'floorChanged', TEMPLATES.floorChanged, e, e.area),
         );
         break;
+      case 'ceilingChanged':
+        tasks.push(
+          ...chain(
+            `ceiling:${roomId(e.roomKey)}`,
+            'ceilingChanged',
+            TEMPLATES.ceilingChanged,
+            e,
+            e.area,
+          ),
+        );
+        break;
       case 'wallPainted':
         for (const s of e.shares) {
           const textured = getMaterial(e.to)?.category === 'wallFinish' && !e.tintOnly;
@@ -162,6 +173,7 @@ export function generateTasks(events: readonly ChangeEvent[]): TaskSpec[] {
       if (
         t.templateKey.startsWith('roomPainted') ||
         t.templateKey.startsWith('roomWallFinished') ||
+        t.templateKey.startsWith('ceilingChanged') ||
         t.templateKey.startsWith('wallRemoved.paint')
       )
         addDeps(t, drywall);

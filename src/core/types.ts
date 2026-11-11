@@ -62,6 +62,8 @@ export interface RoomMeta {
   /** Recolour for a textured floor (#hex). */
   floorTint?: string;
   ceilingMaterial?: ID;
+  /** Recolour for a textured ceiling (#hex). */
+  ceilingTint?: string;
 }
 
 /** Real-world furniture dimensions (metres). */

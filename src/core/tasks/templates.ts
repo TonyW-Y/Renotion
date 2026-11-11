@@ -126,6 +126,15 @@ export const TEMPLATES: Record<
       duration: (m2) => halfDays(m2 / 8),
     },
   ],
+  ceilingChanged: [
+    { step: 'prep', title: 'Prep ceiling', phase: 'prep', duration: 0.5 },
+    {
+      step: 'finish',
+      title: 'Finish ceiling',
+      phase: 'paint',
+      duration: (m2) => halfDays(m2 / 20),
+    },
+  ],
   roomFurnished: [
     {
       step: 'deliver',

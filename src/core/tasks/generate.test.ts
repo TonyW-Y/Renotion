@@ -142,3 +142,16 @@ describe('generateTasks: wall finishes', () => {
     expect(tasks.map((t) => t.templateKey)).toContain('roomPainted.paint');
   });
 });
+
+describe('generateTasks: ceilings', () => {
+  it('finishes the ceiling before the new floor goes in', () => {
+    const tasks = generateTasks([
+      floor,
+      { type: 'ceilingChanged', from: null, to: 'paint-sage', area: 12, ...room },
+    ]);
+    const ceiling = tasks.find((t) => t.templateKey === 'ceilingChanged.finish');
+    const install = tasks.find((t) => t.templateKey === 'floorChanged.install');
+    expect(ceiling).toBeDefined();
+    expect(install?.deps).toContain(ceiling?.key);
+  });
+});

@@ -1,6 +1,7 @@
 import { Ban, Check, Pipette } from 'lucide-react';
 import { Tooltip } from '@/components/ui';
 import {
+  CEILING_FINISHES,
   customPaintId,
   FLOORING,
   getMaterial,
@@ -38,6 +39,19 @@ export function WallTexturePicker({ value, onChange, label }: PickerProps & { la
       label={label}
       noneLabel={`${label}: none`}
       options={WALL_FINISHES}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+/** Grid of textured ceiling finishes (plaster, planks, panels, concrete...). */
+export function CeilingTexturePicker({ value, onChange }: PickerProps) {
+  return (
+    <TexturePicker
+      label="Ceiling texture"
+      noneLabel="Ceiling texture: none"
+      options={CEILING_FINISHES}
       value={value}
       onChange={onChange}
     />

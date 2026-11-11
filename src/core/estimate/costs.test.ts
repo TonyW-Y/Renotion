@@ -243,3 +243,29 @@ describe('buildEstimate: your own furniture prices', () => {
     expect(est.total).toBe(0);
   });
 });
+
+describe('buildEstimate: ceilings', () => {
+  const room = { roomKey: 'r1', roomName: 'Den' };
+  it('prices textured ceilings per sq ft and painted ceilings as paint', () => {
+    // 12 m² × 1.08 × 10.7639 = 139.5 → 140 sq ft × $9 = $1,260
+    const est = buildEstimate([
+      { type: 'ceilingChanged', from: null, to: 'ceiling-wood-planks', area: 12, ...room },
+      {
+        type: 'ceilingChanged',
+        from: null,
+        to: 'paint-sage',
+        area: 12,
+        ...{ roomKey: 'r2', roomName: 'Hall' },
+      },
+    ]);
+    expect(est.lines.find((l) => l.roomKey === 'r1')).toMatchObject({
+      category: 'ceiling',
+      quantity: 140,
+      total: 1260,
+    });
+    expect(est.lines.find((l) => l.roomKey === 'r2')).toMatchObject({
+      category: 'paint',
+      unit: 'gallon',
+    });
+  });
+});

@@ -255,6 +255,10 @@ export const FLOORING: readonly Material[] = [
     unit: 'sqft',
     wasteFactor: 0.15,
   },
+];
+
+/** Ceiling finishes (textures). Ceilings can also simply be painted. */
+export const CEILING_FINISHES: readonly Material[] = [
   {
     id: 'white-plaster',
     name: 'White plaster',
@@ -264,7 +268,62 @@ export const FLOORING: readonly Material[] = [
     colorHex: '#efede8',
     costPerUnit: 3,
     unit: 'sqft',
-    wasteFactor: 0.05,
+    wasteFactor: 0.08,
+  },
+  {
+    id: 'ceiling-wood-planks',
+    name: 'Whitewashed plank ceiling',
+    category: 'ceiling',
+    textureSet: 'whitewashed-planks',
+    tileSize: 1.8,
+    colorHex: '#b5a79e',
+    costPerUnit: 9,
+    unit: 'sqft',
+    wasteFactor: 0.08,
+  },
+  {
+    id: 'ceiling-grey-oak',
+    name: 'Grey oak plank ceiling',
+    category: 'ceiling',
+    textureSet: 'grey-oak-planks',
+    tileSize: 1.5,
+    colorHex: '#46443f',
+    costPerUnit: 10,
+    unit: 'sqft',
+    wasteFactor: 0.08,
+  },
+  {
+    id: 'ceiling-wood-panels',
+    name: 'Wood panel ceiling',
+    category: 'ceiling',
+    textureSet: 'wood-panelling',
+    tileSize: 2.1,
+    colorHex: '#4e2213',
+    costPerUnit: 12,
+    unit: 'sqft',
+    wasteFactor: 0.08,
+  },
+  {
+    id: 'ceiling-concrete',
+    name: 'Exposed concrete ceiling',
+    category: 'ceiling',
+    textureSet: 'concrete-wall',
+    tileSize: 2.71,
+    colorHex: '#8d8570',
+    costPerUnit: 8,
+    unit: 'sqft',
+    wasteFactor: 0.08,
+  },
+  {
+    id: 'ceiling-stucco',
+    name: 'Textured stucco ceiling',
+    category: 'ceiling',
+    textureSet: 'stucco',
+    tileSize: 1.8,
+    colorHex: '#aeada9',
+    costPerUnit: 4.5,
+    unit: 'sqft',
+    wasteFactor: 0.08,
   },
 ];
 
@@ -494,6 +553,7 @@ export const OTHER_MATERIALS: readonly Material[] = [
 export const DEFAULT_MATERIALS: readonly Material[] = [
   ...FLOORING,
   ...WALL_FINISHES,
+  ...CEILING_FINISHES,
   ...PAINTS,
   ...OTHER_MATERIALS,
 ];

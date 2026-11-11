@@ -128,3 +128,16 @@ test('dragging a door grip on the plan resizes it', async ({ page }) => {
   await page.mouse.up();
   await expect(props.getByRole('textbox', { name: 'Opening width' })).toHaveValue('1.45 m');
 });
+
+test('a room can get a new ceiling, which is priced and shown in 3D', async ({ page }) => {
+  const { click, props } = await setup(page);
+  await click(1.5, 1);
+  await props
+    .getByRole('radiogroup', { name: 'Ceiling finish type' })
+    .getByRole('radio', { name: 'Texture' })
+    .click();
+  await props.getByRole('radio', { name: 'Whitewashed plank ceiling' }).click();
+  await page.getByRole('radio', { name: 'Estimate', exact: true }).click();
+  await expect(page.getByText('Whitewashed plank ceiling').first()).toBeVisible();
+  await expect(page.getByText('Ceilings').first()).toBeVisible();
+});

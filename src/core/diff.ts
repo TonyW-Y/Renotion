@@ -56,6 +56,13 @@ export type ChangeEvent =
       style?: OpeningStyle;
     } & RoomRef)
   | ({ type: 'openingRefinished'; openingId: ID; kind: OpeningType } & RoomRef)
+  | ({
+      type: 'ceilingChanged';
+      from: ID | null;
+      to: ID;
+      tint?: string;
+      area: number;
+    } & RoomRef)
   | ({ type: 'openingRemoved'; openingId: ID; kind: OpeningType; width: number } & RoomRef)
   | ({
       type: 'furnitureAdded';
@@ -129,6 +136,8 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
     name: r.name,
     ...(r.meta?.floorMaterial ? { floorMaterial: r.meta.floorMaterial } : {}),
     ...(r.meta?.floorTint ? { floorTint: r.meta.floorTint } : {}),
+    ...(r.meta?.ceilingMaterial ? { ceilingMaterial: r.meta.ceilingMaterial } : {}),
+    ...(r.meta?.ceilingTint ? { ceilingTint: r.meta.ceilingTint } : {}),
   }));
   const matched = resolveRooms(next.rooms, baseAsMeta);
   for (const [i, room] of next.rooms.entries()) {
@@ -150,6 +159,24 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
       area: room.area,
       perimeter: room.perimeter,
       doorWidths,
+    });
+  }
+
+  // --- Ceilings (same room matching as floors).
+  for (const [i, room] of next.rooms.entries()) {
+    const to = room.meta?.ceilingMaterial;
+    const tint = room.meta?.ceilingTint;
+    const from = matched[i]?.meta?.ceilingMaterial ?? null;
+    const sameTint = (matched[i]?.meta?.ceilingTint ?? null) === (tint ?? null);
+    if (!to || (to === from && sameTint)) continue;
+    events.push({
+      type: 'ceilingChanged',
+      roomKey: room.key,
+      roomName: room.name,
+      from,
+      to,
+      ...(tint ? { tint } : {}),
+      area: room.area,
     });
   }
 

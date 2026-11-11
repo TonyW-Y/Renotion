@@ -20,7 +20,8 @@ export type CostCategory =
   | 'windows'
   | 'demolition'
   | 'furniture'
-  | 'wallFinish';
+  | 'wallFinish'
+  | 'ceiling';
 
 export const CATEGORY_LABELS: Record<CostCategory, string> = {
   flooring: 'Flooring',
@@ -33,6 +34,7 @@ export const CATEGORY_LABELS: Record<CostCategory, string> = {
   demolition: 'Demolition',
   furniture: 'Furniture',
   wallFinish: 'Wall finishes',
+  ceiling: 'Ceilings',
 };
 
 export interface LineItem {
@@ -115,6 +117,7 @@ export function buildEstimate(
   const paint = new Map<string, Accumulator>();
   const drywall = new Map<string, Accumulator>();
   const wallFinish = new Map<string, Accumulator>();
+  const ceilings = new Map<string, Accumulator>();
   const pool = (
     map: Map<string, Accumulator>,
     roomKey: string | null,
@@ -206,6 +209,12 @@ export function buildEstimate(
       }
       case 'openingRemoved':
         break;
+      case 'ceilingChanged': {
+        const m = getMaterial(e.to);
+        if (!m) break;
+        pool(m.category === 'paint' ? paint : ceilings, e.roomKey, e.roomName, m, e.area);
+        break;
+      }
       case 'furnitureAdded': {
         const m = getMaterial(furnitureMaterialId(e.modelId));
         if (!m) break;
@@ -253,6 +262,20 @@ export function buildEstimate(
         quantity: Math.ceil(a.amount * (1 + a.material.wasteFactor) * SQFT_PER_SQM - 1e-9),
         unit: 'sqft',
         basis: `${a.amount.toFixed(1)} m² of wall + ${Math.round(a.material.wasteFactor * 100)}% waste`,
+      },
+      a.material,
+    );
+  }
+  for (const a of ceilings.values()) {
+    push(
+      {
+        roomKey: a.roomKey,
+        roomName: a.roomName,
+        category: 'ceiling',
+        description: a.material.name,
+        quantity: Math.ceil(a.amount * (1 + a.material.wasteFactor) * SQFT_PER_SQM - 1e-9),
+        unit: 'sqft',
+        basis: `${a.amount.toFixed(1)} m² of ceiling + ${Math.round(a.material.wasteFactor * 100)}% waste`,
       },
       a.material,
     );

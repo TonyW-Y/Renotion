@@ -8,6 +8,7 @@ import { useImage } from '@/features/materials/useImage';
 import { MATERIALS } from './materials';
 
 export type HighlightState = 'none' | 'hover' | 'selected';
+export type Surface = 'wall' | 'ceiling';
 
 const cache = new Map<string, THREE.MeshStandardMaterial>();
 
@@ -29,13 +30,21 @@ export function wallFaceMaterial(
 }
 
 /** Plain wall material in a flat colour (or the default wall colour). */
-export function flatWallMaterial(color: string | undefined, state: HighlightState, accent: string) {
-  const key = `${color ?? 'base'}|${state}|${accent}`;
+export function flatWallMaterial(
+  color: string | undefined,
+  state: HighlightState,
+  accent: string,
+  surface: Surface = 'wall',
+) {
+  const key = `${surface}|${color ?? 'base'}|${state}|${accent}`;
   let m = cache.get(key);
   if (!m) {
+    const side = surface === 'ceiling' ? THREE.DoubleSide : THREE.FrontSide;
     const base = color
-      ? new THREE.MeshStandardMaterial({ color, roughness: 0.88 })
-      : MATERIALS.wall;
+      ? new THREE.MeshStandardMaterial({ color, roughness: 0.88, side })
+      : surface === 'ceiling'
+        ? MATERIALS.ceiling
+        : MATERIALS.wall;
     m = tinted(base, state, accent);
     cache.set(key, m);
   }
@@ -117,15 +126,27 @@ export function useWallSideMaterial(
   state: HighlightState,
   accent: string,
 ): THREE.Material {
+  return useSurfaceMaterial(finish, tint, state, accent, 'wall');
+}
+
+/** Same as {@link useWallSideMaterial}, for walls or (double-sided) ceilings. */
+export function useSurfaceMaterial(
+  finish: string | undefined,
+  tint: string | undefined,
+  state: HighlightState,
+  accent: string,
+  surface: Surface,
+): THREE.Material {
   const m = getMaterial(finish);
-  const set = m?.category === 'wallFinish' ? m.textureSet : undefined;
+  const textured = m?.category === 'wallFinish' || m?.category === 'ceiling';
+  const set = textured ? m.textureSet : undefined;
   const color = useImage(set && textureUrl(set, 'color'));
   const normal = useImage(set && textureUrl(set, 'normal'));
   return useMemo(() => {
-    if (!m || !set) return flatWallMaterial(m?.colorHex, state, accent);
-    if (!color) return flatWallMaterial(tint ?? m.colorHex, state, accent);
+    if (!m || !set) return flatWallMaterial(m?.colorHex, state, accent, surface);
+    if (!color) return flatWallMaterial(tint ?? m.colorHex, state, accent, surface);
     const tile = m.tileSize ?? 1;
-    const key = `${set}|${tint ?? ''}|${normal ? 'n' : ''}|${state}|${accent}`;
+    const key = `${surface}|${set}|${tint ?? ''}|${normal ? 'n' : ''}|${state}|${accent}`;
     let mat = wallCache.get(key);
     if (!mat) {
       const map = configure(
@@ -136,6 +157,7 @@ export function useWallSideMaterial(
       const base = new THREE.MeshStandardMaterial({
         map,
         roughness: 0.92,
+        side: surface === 'ceiling' ? THREE.DoubleSide : THREE.FrontSide,
         ...(normal
           ? {
               normalMap: configure(new THREE.Texture(normal), tile, false),
@@ -147,5 +169,5 @@ export function useWallSideMaterial(
       wallCache.set(key, mat);
     }
     return mat;
-  }, [m, set, color, normal, tint, state, accent]);
+  }, [m, set, color, normal, tint, state, accent, surface]);
 }
