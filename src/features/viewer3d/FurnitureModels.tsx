@@ -2,7 +2,8 @@ import { Instance, Instances } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { FURNITURE_BY_ID, type FurnitureModel, type FurniturePart } from '@/core/furniture/catalog';
+import type { FurnitureModel, FurniturePart } from '@/core/furniture/catalog';
+import { modelFor } from '@/core/furniture/placement';
 import type { FurnitureItem } from '@/core/types';
 import { useUiStore } from '@/state/uiStore';
 
@@ -163,27 +164,29 @@ export function FurnitureModels({
     : '|';
   const hot = useMemo(() => new Set(hotKey.split('|').filter(Boolean)), [hotKey]);
 
+  // Items that look identical (same model, size and colours) share instancing.
   const groups = useMemo(() => {
     const m = new Map<string, FurnitureItem[]>();
     for (const item of items) {
       if (hot.has(item.id)) continue;
-      m.set(item.modelId, [...(m.get(item.modelId) ?? []), item]);
+      const key = `${item.modelId}|${JSON.stringify(item.size ?? null)}|${JSON.stringify(item.colors ?? null)}`;
+      m.set(key, [...(m.get(key) ?? []), item]);
     }
     return [...m.entries()];
   }, [items, hot]);
 
   return (
     <>
-      {groups.map(([modelId, list]) => {
-        const model = FURNITURE_BY_ID.get(modelId);
+      {groups.map(([key, list]) => {
+        const model = list[0] && modelFor(list[0]);
         return model ? (
-          <ModelInstances key={modelId} model={model} items={list} interactive={interactive} />
+          <ModelInstances key={key} model={model} items={list} interactive={interactive} />
         ) : null;
       })}
       {items
         .filter((i) => hot.has(i.id))
         .map((item) => {
-          const model = FURNITURE_BY_ID.get(item.modelId);
+          const model = modelFor(item);
           return model ? (
             <HighlightedItem
               key={item.id}

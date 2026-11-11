@@ -103,11 +103,12 @@ export function clampFurnitureSize(model: FurnitureModel, size: FurnitureSize): 
   };
 }
 
-/** Price multiplier for a resized item: its footprint area relative to the catalogue size. */
+/** Price multiplier for a resized item: its footprint area relative to the catalogue size (2 dp). */
 export function sizeFactor(item: ItemShape): number {
   const base = FURNITURE_BY_ID.get(item.modelId);
   if (!base || !item.size) return 1;
-  return (item.size.width * item.size.depth) / (base.width * base.depth);
+  const f = (item.size.width * item.size.depth) / (base.width * base.depth);
+  return Math.round(f * 100) / 100;
 }
 
 /** Plan-space footprint of a furniture item (rotated rectangle), or null if the model is unknown. */

@@ -11,8 +11,7 @@ import {
   translateWall,
   type Command,
 } from '@/core/commands';
-import { FURNITURE_BY_ID } from '@/core/furniture/catalog';
-import { canPlaceFurniture, furnitureFootprint } from '@/core/furniture/placement';
+import { canPlaceFurniture, furnitureFootprint, modelFor } from '@/core/furniture/placement';
 import { cornerAt, hitTest } from '@/core/geometry/hitTest';
 import { snapPoint, snapToGrid, type SnapResult } from '@/core/geometry/snapping';
 import { distance, equals, pointToSegmentDistance, sub } from '@/core/geometry/vec2';
@@ -69,9 +68,9 @@ const snapAngleRad = (a: number, stepDeg: number) => {
 
 /** Where the rotate handle of a furniture item sits (in front of it). */
 export function rotateHandleAt(
-  item: Pick<FurnitureItem, 'modelId' | 'position' | 'rotation'>,
+  item: Pick<FurnitureItem, 'modelId' | 'position' | 'rotation' | 'size'>,
 ): Vec2 | null {
-  const m = FURNITURE_BY_ID.get(item.modelId);
+  const m = modelFor(item);
   if (!m) return null;
   const r = m.depth / 2 + ROTATE_HANDLE_GAP;
   // Local front is −y in plan space at rotation 0.

@@ -1,6 +1,5 @@
 import { Circle, Group, Line, Rect } from 'react-konva';
-import { FURNITURE_BY_ID } from '@/core/furniture/catalog';
-import { furnitureFootprint } from '@/core/furniture/placement';
+import { furnitureFootprint, modelFor } from '@/core/furniture/placement';
 import type { FurnitureItem } from '@/core/types';
 import type { Selection } from '@/state/uiStore';
 import { rotateHandleAt } from './useCanvasInteraction';
@@ -17,7 +16,7 @@ interface ItemProps {
 
 /** One furniture item in plan view, drawn from its model's parts. */
 function FurnitureItemShape({ item, view, colors, outline, opacity = 1 }: ItemProps) {
-  const model = FURNITURE_BY_ID.get(item.modelId);
+  const model = modelFor(item);
   const fp = furnitureFootprint(item);
   if (!model || !fp) return null;
   const s = view.s;
@@ -96,8 +95,7 @@ export function FurnitureShapes({
 }: FurnitureShapesProps) {
   // Low pieces (rugs) first so taller furniture sits on top of them in plan view.
   const ordered = [...items].sort(
-    (a, b) =>
-      (FURNITURE_BY_ID.get(a.modelId)?.height ?? 0) - (FURNITURE_BY_ID.get(b.modelId)?.height ?? 0),
+    (a, b) => (modelFor(a)?.height ?? 0) - (modelFor(b)?.height ?? 0),
   );
   return (
     <>

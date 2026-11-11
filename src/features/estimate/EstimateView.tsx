@@ -1,7 +1,9 @@
 import { motion } from 'motion/react';
 import { ArrowRight, Calculator, Info, Printer, RotateCcw, Sparkles } from 'lucide-react';
 import { Button, CommitInput, Tooltip } from '@/components/ui';
-import { getMaterial } from '@/core/estimate/defaultCosts';
+import { FURNITURE_PREFIX, getMaterial } from '@/core/estimate/defaultCosts';
+import { FURNITURE_BY_ID } from '@/core/furniture/catalog';
+import { TopView } from '@/features/furniture/TopView';
 import type { Estimate, LineItem } from '@/core/estimate/costs';
 import { textureUrl } from '@/features/materials/textures';
 import { formatMoney, formatMoneyWhole, formatQuantity, parseMoney, perUnit } from '@/lib/format';
@@ -10,6 +12,16 @@ import { useEstimate } from '@/state/useEstimate';
 import { useUiStore } from '@/state/uiStore';
 
 function Swatch({ materialId }: { materialId: string }) {
+  const piece = materialId.startsWith(FURNITURE_PREFIX)
+    ? FURNITURE_BY_ID.get(materialId.slice(FURNITURE_PREFIX.length))
+    : undefined;
+  if (piece) {
+    return (
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-fg/[0.05] p-0.5">
+        <TopView model={piece} className="max-h-full max-w-full" />
+      </span>
+    );
+  }
   const m = getMaterial(materialId);
   if (!m) return <span className="size-7 shrink-0 rounded-lg bg-fg/[0.06]" />;
   return (
