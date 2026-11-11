@@ -22,6 +22,8 @@ import { openingParts } from './openingDesigns';
 import { wallPieceGeometry } from './wallGeometry';
 
 const CLICK_SLOP_PX = 4;
+/** How far ceilings sit below the wall tops (m). */
+const CEILING_DROP = 0.005;
 
 function useHighlight(
   base: THREE.MeshStandardMaterial,
@@ -320,7 +322,9 @@ function RoomCeiling({
       geometry={geo}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, height, 0]}
+      // Rooms are traced along wall centre lines, so the ceiling's edge runs
+      // under the wall tops; keep it just below them so the two never z-fight.
+      position={[0, height - CEILING_DROP, 0]}
       receiveShadow
     />
   );
