@@ -1,5 +1,5 @@
 import { useTexture } from '@react-three/drei';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { getMaterial } from '@/core/estimate/defaultCosts';
 import { textureUrl } from '@/features/materials/textures';
@@ -41,14 +41,16 @@ export function wallEdgeMaterial(state: HighlightState, accent: string) {
   return wallFaceMaterial(undefined, state, accent);
 }
 
-function configure(textures: Record<string, THREE.Texture>, tileSize: number) {
-  for (const [name, t] of Object.entries(textures)) {
-    t.wrapS = THREE.RepeatWrapping;
-    t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(1 / tileSize, 1 / tileSize);
-    t.anisotropy = 8;
-    if (name === 'map') t.colorSpace = THREE.SRGBColorSpace;
-  }
+/** A configured copy of a loaded texture (the cached original is left untouched). */
+function prepared(src: THREE.Texture, tileSize: number, srgb: boolean): THREE.Texture {
+  const t = src.clone();
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / tileSize, 1 / tileSize);
+  t.anisotropy = 8;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.needsUpdate = true;
+  return t;
 }
 
 /**
@@ -61,22 +63,29 @@ export function useTexturedFloor(
   state: HighlightState,
   accent: string,
 ) {
-  const maps = useTexture(
-    {
-      map: textureUrl(set, 'color'),
-      normalMap: textureUrl(set, 'normal'),
-      roughnessMap: textureUrl(set, 'rough'),
-    },
-    (loaded) => {
-      configure(loaded, tileSize);
-    },
-  );
-  return useMemo(() => {
+  const maps = useTexture({
+    map: textureUrl(set, 'color'),
+    normalMap: textureUrl(set, 'normal'),
+    roughnessMap: textureUrl(set, 'rough'),
+  });
+  const material = useMemo(() => {
     const m = new THREE.MeshStandardMaterial({
-      ...maps,
+      map: prepared(maps.map, tileSize, true),
+      normalMap: prepared(maps.normalMap, tileSize, false),
+      roughnessMap: prepared(maps.roughnessMap, tileSize, false),
       roughness: 1,
       normalScale: new THREE.Vector2(0.6, 0.6),
     });
     return tinted(m, state, accent);
-  }, [maps, state, accent]);
+  }, [maps, tileSize, state, accent]);
+  useEffect(
+    () => () => {
+      material.map?.dispose();
+      material.normalMap?.dispose();
+      material.roughnessMap?.dispose();
+      material.dispose();
+    },
+    [material],
+  );
+  return material;
 }

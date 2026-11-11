@@ -148,13 +148,13 @@ export default function Viewer3D() {
         gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
       >
         <Suspense fallback={null}>
-          <Environment files={HDRI} environmentIntensity={theme === 'dark' ? 0.55 : 0.75} />
+          <Environment files={HDRI} environmentIntensity={theme === 'dark' ? 0.45 : 0.55} />
         </Suspense>
-        <hemisphereLight args={['#ffffff', '#b9b2a6', theme === 'dark' ? 0.35 : 0.5]} />
+        <hemisphereLight args={['#ffffff', '#b9b2a6', theme === 'dark' ? 0.25 : 0.3]} />
         <directionalLight
           castShadow
           position={[bounds.cx + 8, 14, bounds.cz + 6]}
-          intensity={1.6}
+          intensity={1.15}
           shadow-mapSize={[2048, 2048]}
           shadow-bias={-0.0004}
           shadow-normalBias={0.02}
