@@ -12,6 +12,7 @@ import { EmptyState } from './EmptyState';
 import { ScaleBar } from './ScaleBar';
 import {
   Handle,
+  OpeningCuts,
   OpeningShape,
   OpeningShapes,
   RoomLabels,
@@ -139,14 +140,27 @@ export function PlanCanvas() {
       {width > 0 && (
         <Stage width={width} height={height} listening={false} className="absolute inset-0">
           <Layer listening={false}>
+            {/* Walls, then openings erase them, then rooms are drawn underneath. */}
+            <WallShapes
+              pass="base"
+              walls={previewPlan.walls}
+              joins={joins}
+              view={view}
+              colors={colors}
+              selection={selection}
+              hover={hover}
+            />
+            <OpeningCuts openings={previewPlan.openings} walls={previewPlan.walls} view={view} />
             <RoomShapes
               rooms={rooms}
               view={view}
               colors={colors}
               selection={selection}
               hover={hover}
+              behind
             />
             <WallShapes
+              pass="highlight"
               walls={previewPlan.walls}
               joins={joins}
               view={view}

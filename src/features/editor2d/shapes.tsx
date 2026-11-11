@@ -29,7 +29,15 @@ interface RoomsProps {
   units: UnitSystem;
 }
 
-export function RoomShapes({ rooms, view, colors, selection, hover }: Omit<RoomsProps, 'units'>) {
+/** Room fills. With `behind`, they are composited under what's already drawn (walls). */
+export function RoomShapes({
+  rooms,
+  view,
+  colors,
+  selection,
+  hover,
+  behind = false,
+}: Omit<RoomsProps, 'units'> & { behind?: boolean }) {
   return (
     <>
       {rooms.map((r) => {
@@ -45,6 +53,7 @@ export function RoomShapes({ rooms, view, colors, selection, hover }: Omit<Rooms
             strokeWidth={selected ? 1 : 0}
             dash={[6, 4]}
             perfectDrawEnabled={false}
+            globalCompositeOperation={behind ? 'destination-over' : 'source-over'}
           />
         );
       })}
@@ -105,6 +114,8 @@ interface WallsProps {
   selection: Selection | null;
   hover: Selection | null;
   danger?: boolean;
+  /** 'base' draws every wall; 'highlight' draws hover / selection on top. */
+  pass: 'base' | 'highlight';
 }
 
 export function WallShapes({
@@ -115,21 +126,27 @@ export function WallShapes({
   selection,
   hover,
   danger = false,
+  pass,
 }: WallsProps) {
+  if (pass === 'base') {
+    // All walls share one fill so overlapping corners merge seamlessly.
+    return (
+      <>
+        {walls.map((w) => (
+          <Line
+            key={w.id}
+            points={flat(wallFootprint(w, joins.get(w.id)), view)}
+            closed
+            fill={colors.wall}
+            perfectDrawEnabled={false}
+          />
+        ))}
+      </>
+    );
+  }
   const highlighted = (w: Wall) => isSel(selection, 'wall', w.id) || isSel(hover, 'wall', w.id);
   return (
     <>
-      {/* Base pass: all walls share a fill so overlapping corners merge. */}
-      {walls.map((w) => (
-        <Line
-          key={w.id}
-          points={flat(wallFootprint(w, joins.get(w.id)), view)}
-          closed
-          fill={colors.wall}
-          perfectDrawEnabled={false}
-        />
-      ))}
-      {/* Highlight pass for hover / selection. */}
       {walls.filter(highlighted).map((w) => {
         const selected = isSel(selection, 'wall', w.id);
         const tint = danger && !selected ? colors.danger : colors.accent;
@@ -174,24 +191,59 @@ interface OpeningProps {
   ghost?: boolean;
 }
 
+function cutPolygon(opening: Pick<Opening, 'offset' | 'width'>, wall: Wall): Vec2[] {
+  const span = openingSpan(opening, wall);
+  const n = scale(perp(wallDirection(wall)), wall.thickness / 2 + 0.002);
+  return [add(span.start, n), add(span.end, n), sub(span.end, n), sub(span.start, n)];
+}
+
+/** Erases the wall where openings are, so the room fill / grid shows through. */
+export function OpeningCuts({
+  openings,
+  walls,
+  view,
+}: {
+  openings: readonly Opening[];
+  walls: readonly Wall[];
+  view: View;
+}) {
+  const byId = new Map(walls.map((w) => [w.id, w]));
+  return (
+    <>
+      {openings.map((o) => {
+        const w = byId.get(o.wallId);
+        return w ? (
+          <Line
+            key={o.id}
+            points={flat(cutPolygon(o, w), view)}
+            closed
+            fill="#000"
+            globalCompositeOperation="destination-out"
+          />
+        ) : null;
+      })}
+    </>
+  );
+}
+
 export function OpeningShape({ opening, wall, view, colors, tint, ghost = false }: OpeningProps) {
   const span = openingSpan(opening, wall);
-  const dir = wallDirection(wall);
-  const n = perp(dir);
+  const n = perp(wallDirection(wall));
   const half = wall.thickness / 2;
-  const cut = [
-    add(span.start, scale(n, half)),
-    add(span.end, scale(n, half)),
-    sub(span.end, scale(n, half)),
-    sub(span.start, scale(n, half)),
-  ];
+  const cut = cutPolygon(opening, wall);
   const line = tint ?? colors.fgMuted;
   const sw = Math.max(1, Math.min(1.75, view.s / 60));
 
   if (opening.type === 'window') {
     return (
       <Group opacity={ghost ? 0.85 : 1}>
-        <Line points={flat(cut, view)} closed fill={colors.canvas} stroke={line} strokeWidth={sw} />
+        <Line
+          points={flat(cut, view)}
+          closed
+          fill={ghost ? colors.canvas : 'transparent'}
+          stroke={line}
+          strokeWidth={sw}
+        />
         <Line
           points={flat([span.start, span.end], view)}
           stroke={tint ?? colors.accent2}
@@ -218,7 +270,7 @@ export function OpeningShape({ opening, wall, view, colors, tint, ghost = false 
 
   return (
     <Group opacity={ghost ? 0.85 : 1}>
-      <Line points={flat(cut, view)} closed fill={colors.canvas} />
+      {ghost && <Line points={flat(cut, view)} closed fill={colors.canvas} opacity={0.7} />}
       <Line
         points={flat(arc, view)}
         stroke={line}
