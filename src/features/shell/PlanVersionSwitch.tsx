@@ -5,7 +5,7 @@ import { usePlanStore } from '@/state/planStore';
 import { useUiStore } from '@/state/uiStore';
 
 const OPTIONS: readonly SegmentOption<PlanKind>[] = [
-  { value: 'baseline', label: 'Current home', tooltip: 'Your home as it is today' },
+  { value: 'baseline', label: 'Current', tooltip: 'Your home as it is today' },
   { value: 'planned', label: 'Renovation', tooltip: 'Your planned changes' },
 ];
 
@@ -35,7 +35,7 @@ export function PlanVersionSwitch() {
   return (
     <div className="flex items-center gap-2">
       <span className="rounded-lg bg-fg/[0.04] px-3 py-1.5 text-xs font-medium text-fg shadow-[inset_0_0_0_1px_var(--border)]">
-        Current home
+        Current
       </span>
       <Tooltip
         content={

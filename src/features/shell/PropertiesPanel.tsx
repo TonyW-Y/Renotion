@@ -9,6 +9,7 @@ import {
   RoomInspector,
   WallInspector,
 } from '@/features/inspector/Inspectors';
+import { EstimateSummary } from '@/features/estimate/EstimateSummary';
 import { selectActivePlan, usePlanStore } from '@/state/planStore';
 import { useDerivedPlan } from '@/state/useDerivedPlan';
 import { useUiStore } from '@/state/uiStore';
@@ -92,6 +93,7 @@ export function PropertiesPanel() {
             )}
             {inspector && <div className="border-b border-border" />}
 
+            <EstimateSummary />
             <PlanOverview plan={plan} rooms={rooms} units={units} />
 
             <PanelSection title="Defaults">

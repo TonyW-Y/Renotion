@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { usePlanStore } from '@/state/planStore';
 import { useUiStore, type ViewMode } from '@/state/uiStore';
 import { PlanVersionSwitch } from './PlanVersionSwitch';
+import { SectionTabs } from './SectionTabs';
 import { UndoRedo } from './UndoRedo';
 import type { UnitSystem } from '@/core/units';
 
@@ -15,7 +16,7 @@ const VIEW_OPTIONS: readonly SegmentOption<ViewMode>[] = [
     label: (
       <>
         <Square className="size-3.5" />
-        <span className="hidden sm:inline">2D</span>
+        <span className="hidden xl:inline">2D</span>
       </>
     ),
     ariaLabel: '2D view',
@@ -27,7 +28,7 @@ const VIEW_OPTIONS: readonly SegmentOption<ViewMode>[] = [
     label: (
       <>
         <Columns2 className="size-3.5" />
-        <span className="hidden sm:inline">Split</span>
+        <span className="hidden xl:inline">Split</span>
       </>
     ),
     ariaLabel: 'Split view',
@@ -39,7 +40,7 @@ const VIEW_OPTIONS: readonly SegmentOption<ViewMode>[] = [
     label: (
       <>
         <Box className="size-3.5" />
-        <span className="hidden sm:inline">3D</span>
+        <span className="hidden xl:inline">3D</span>
       </>
     ),
     ariaLabel: '3D view',
@@ -54,6 +55,7 @@ const UNIT_OPTIONS: readonly SegmentOption<UnitSystem>[] = [
 ];
 
 export function TopBar() {
+  const section = useUiStore((s) => s.section);
   const viewMode = useUiStore((s) => s.viewMode);
   const setViewMode = useUiStore((s) => s.setViewMode);
   const units = useUiStore((s) => s.units);
@@ -98,18 +100,24 @@ export function TopBar() {
       </div>
 
       {/* Center: plan version */}
-      <div className="hidden lg:block">
-        <PlanVersionSwitch />
-      </div>
+      <SectionTabs />
 
       {/* Right: view + preferences */}
       <div className="col-start-3 flex items-center justify-end gap-1.5">
-        <SegmentedControl
-          ariaLabel="View mode"
-          value={viewMode}
-          onChange={setViewMode}
-          options={VIEW_OPTIONS}
-        />
+        <div className="hidden lg:block">
+          <PlanVersionSwitch />
+        </div>
+        {section === 'design' && (
+          <>
+            <div className="mx-1 hidden h-5 w-px bg-border lg:block" />
+            <SegmentedControl
+              ariaLabel="View mode"
+              value={viewMode}
+              onChange={setViewMode}
+              options={VIEW_OPTIONS}
+            />
+          </>
+        )}
         <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
         <SegmentedControl
           ariaLabel="Units"
@@ -124,16 +132,18 @@ export function TopBar() {
             {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </IconButton>
         </Tooltip>
-        <Tooltip content={rightPanelOpen ? 'Hide properties' : 'Show properties'}>
-          <IconButton
-            label="Toggle properties panel"
-            aria-pressed={rightPanelOpen}
-            onClick={toggleRightPanel}
-            className={cn(rightPanelOpen && 'text-fg')}
-          >
-            <PanelRight className="size-4" />
-          </IconButton>
-        </Tooltip>
+        {section === 'design' && (
+          <Tooltip content={rightPanelOpen ? 'Hide properties' : 'Show properties'}>
+            <IconButton
+              label="Toggle properties panel"
+              aria-pressed={rightPanelOpen}
+              onClick={toggleRightPanel}
+              className={cn(rightPanelOpen && 'text-fg')}
+            >
+              <PanelRight className="size-4" />
+            </IconButton>
+          </Tooltip>
+        )}
       </div>
     </header>
   );
