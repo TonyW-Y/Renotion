@@ -253,3 +253,18 @@ describe('diffPlans: tints and textured wall finishes', () => {
     expect(brick[0]).not.toHaveProperty('tintOnly');
   });
 });
+
+describe('diffPlans: furniture with your own price', () => {
+  it('carries the custom price on the event', () => {
+    const base = room();
+    const planned: Plan = {
+      ...base,
+      furniture: [
+        { id: 'f', modelId: 'sofa', position: { x: 2, y: 1.5 }, rotation: 0, price: 640 },
+      ],
+    };
+    expect(diffPlans(base, planned)).toEqual([
+      expect.objectContaining({ type: 'furnitureAdded', price: 640 }),
+    ]);
+  });
+});

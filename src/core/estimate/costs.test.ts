@@ -217,3 +217,29 @@ describe('buildEstimate: textured wall finishes', () => {
     ]);
   });
 });
+
+describe('buildEstimate: your own furniture prices', () => {
+  const ev = (itemId: string, price?: number) =>
+    ({
+      type: 'furnitureAdded',
+      itemId,
+      modelId: 'sofa',
+      sizeFactor: 1.5,
+      roomKey: 'r1',
+      roomName: 'Den',
+      ...(price !== undefined ? { price } : {}),
+    }) as const;
+
+  it('uses the price you entered as-is (no size scaling, no overrides)', () => {
+    const est = buildEstimate([ev('a', 850), ev('b', 850), ev('c')], { 'furniture:sofa': 1000 });
+    const yours = est.lines.find((l) => l.description.includes('your price'));
+    expect(yours).toMatchObject({ quantity: 2, unitCost: 850, total: 1700 });
+    const estimated = est.lines.find((l) => !l.description.includes('your price'));
+    expect(estimated?.unitCost).toBe(1500);
+  });
+
+  it('accepts a zero price (e.g. furniture you already own)', () => {
+    const est = buildEstimate([ev('a', 0)]);
+    expect(est.total).toBe(0);
+  });
+});

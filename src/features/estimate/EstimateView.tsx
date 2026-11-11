@@ -40,6 +40,17 @@ function PriceCell({ line }: { line: LineItem }) {
   const setCostOverride = usePlanStore((s) => s.setCostOverride);
   const base = getMaterial(line.materialId)?.costPerUnit;
   const overridden = line.materialId in overrides;
+  if (line.userPriced) {
+    return (
+      <div className="flex justify-end">
+        <Tooltip content="Your own price · change it on the item in Design">
+          <span className="tabular inline-flex h-7 w-24 items-center justify-end rounded-lg bg-accent-soft px-2 font-mono text-xs text-accent">
+            {formatMoney(line.unitCost)}
+          </span>
+        </Tooltip>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center justify-end gap-1">
       {overridden && (

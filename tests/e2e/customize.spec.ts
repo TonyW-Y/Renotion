@@ -90,3 +90,41 @@ test('a textured wall finish is priced per square foot and can be recoloured', a
   await expect(page.getByText('Red brick veneer').first()).toBeVisible();
   expect(money(await page.getByTestId('estimate-total').innerText())).toBeGreaterThan(0);
 });
+
+test('you can enter your own furniture price and switch back to the estimate', async ({ page }) => {
+  const { click, props } = await setup(page);
+  const total = page.getByTestId('estimate-summary-total');
+  await page.keyboard.press('f');
+  await page.getByRole('button', { name: 'Place Sofa', exact: true }).click();
+  await click(0, 0.5);
+  await page.keyboard.press('v');
+  await click(0, 0.5);
+  await expect(total).toHaveText('$1,299.00');
+
+  await props.getByRole('radio', { name: 'My price' }).click();
+  const mine = props.getByRole('textbox', { name: 'Your price' });
+  await mine.fill('850');
+  await mine.press('Enter');
+  await expect(total).toHaveText('$850.00');
+
+  await props.getByRole('radio', { name: 'Estimated' }).click();
+  await expect(total).toHaveText('$1,299.00');
+});
+
+test('dragging a door grip on the plan resizes it', async ({ page }) => {
+  const { props } = await setup(page);
+  const box = await page.getByTestId('plan-canvas').boundingBox();
+  if (!box) throw new Error('canvas not visible');
+  const at = (x: number, y: number) =>
+    [box.x + box.width / 2 + x * 80, box.y + box.height / 2 - y * 80] as const;
+  const [dx, dy] = at(-1.5, -2);
+  await page.mouse.click(dx, dy);
+  // The door spans −1.95 … −1.05; drag its right grip to −0.5.
+  const [gx, gy] = at(-1.05, -2);
+  const [tx, ty] = at(-0.5, -2);
+  await page.mouse.move(gx, gy);
+  await page.mouse.down();
+  await page.mouse.move(tx, ty, { steps: 6 });
+  await page.mouse.up();
+  await expect(props.getByRole('textbox', { name: 'Opening width' })).toHaveValue('1.45 m');
+});

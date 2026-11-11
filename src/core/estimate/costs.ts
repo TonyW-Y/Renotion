@@ -48,6 +48,8 @@ export interface LineItem {
   total: number;
   /** Short explanation of the quantity, e.g. "12.0 m² + 10% waste". */
   basis: string;
+  /** Priced with the user's own number (not editable from the estimate). */
+  userPriced?: boolean;
 }
 
 export interface Subtotal<K> {
@@ -93,7 +95,8 @@ export function buildEstimate(
     a: Pick<
       LineItem,
       'roomKey' | 'roomName' | 'category' | 'description' | 'quantity' | 'unit' | 'basis'
-    >,
+    > &
+      Pick<Partial<LineItem>, 'userPriced'>,
     m: Material,
     unitCost = price(m),
   ) => {
@@ -127,7 +130,7 @@ export function buildEstimate(
 
   const counts = new Map<string, Accumulator>();
   const refinish = new Map<string, Accumulator>();
-  const furniture = new Map<string, Accumulator & { factor: number }>();
+  const furniture = new Map<string, Accumulator & { factor: number; custom?: number }>();
 
   for (const e of events) {
     switch (e.type) {
@@ -207,7 +210,9 @@ export function buildEstimate(
         const m = getMaterial(furnitureMaterialId(e.modelId));
         if (!m) break;
         const factor = Math.round(e.sizeFactor * 100) / 100;
-        const k = `${e.roomKey ?? ''}|${m.id}|${factor}`;
+        // Pieces with your own price pool separately from estimated ones.
+        const priceKey = e.price === undefined ? `x${factor}` : `own${e.price}`;
+        const k = `${e.roomKey ?? ''}|${m.id}|${priceKey}`;
         const cur = furniture.get(k);
         if (cur) cur.amount += 1;
         else
@@ -217,6 +222,7 @@ export function buildEstimate(
             material: m,
             amount: 1,
             factor,
+            ...(e.price === undefined ? {} : { custom: e.price }),
           });
         break;
       }
@@ -301,6 +307,23 @@ export function buildEstimate(
   }
 
   for (const a of furniture.values()) {
+    if (a.custom !== undefined) {
+      push(
+        {
+          roomKey: a.roomKey,
+          roomName: a.roomName,
+          category: 'furniture',
+          description: `${a.material.name} (your price)`,
+          quantity: a.amount,
+          unit: 'each',
+          basis: `${a.amount} × ${a.material.name.toLowerCase()} at the price you entered`,
+          userPriced: true,
+        },
+        a.material,
+        a.custom,
+      );
+      continue;
+    }
     const resized = a.factor !== 1;
     push(
       {

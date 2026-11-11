@@ -39,6 +39,7 @@ export interface FurniturePatch {
   elevation?: number | null;
   size?: FurnitureSize | null;
   colors?: FurnitureColors | null;
+  price?: number | null;
 }
 
 /** An opening plus its position in `plan.openings`, so deletes undo in place. */

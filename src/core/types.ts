@@ -82,6 +82,8 @@ export interface FurnitureItem {
   size?: FurnitureSize;
   /** Custom colours for the model's main (primary) and accent (secondary) materials. */
   colors?: FurnitureColors;
+  /** The user's own price for this piece (CAD); the estimated price when absent. */
+  price?: number;
 }
 
 export interface FurnitureColors {

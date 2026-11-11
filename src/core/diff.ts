@@ -63,6 +63,8 @@ export type ChangeEvent =
       modelId: string;
       /** Price multiplier for a resized piece (footprint area ratio). */
       sizeFactor: number;
+      /** The user's own price for this piece, replacing the estimate. */
+      price?: number;
     } & RoomRef);
 
 export type ChangeType = ChangeEvent['type'];
@@ -260,6 +262,7 @@ export function diffPlans(baseline: Plan, planned: Plan): ChangeEvent[] {
       itemId: f.id,
       modelId: f.modelId,
       sizeFactor: sizeFactor(f),
+      ...(f.price !== undefined ? { price: f.price } : {}),
       ...roomAt(next, f.position),
     });
   }

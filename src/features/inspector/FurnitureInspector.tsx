@@ -7,9 +7,12 @@ import {
   IconButton,
   LengthInput,
   PanelSection,
+  SegmentedControl,
   Tooltip,
+  type SegmentOption,
 } from '@/components/ui';
 import { setFurnitureProps } from '@/core/commands';
+import { furnitureMaterialId } from '@/core/estimate/defaultCosts';
 import { FURNITURE_BY_ID } from '@/core/furniture/catalog';
 import {
   canPlaceFurniture,
@@ -22,12 +25,17 @@ import {
 import type { FurnitureItem, FurnitureSize, Plan } from '@/core/types';
 import type { UnitSystem } from '@/core/units';
 import { ColorSwatches } from '@/features/materials/ColorSwatches';
-import { formatMoneyWhole } from '@/lib/format';
+import { formatMoney, formatMoneyWhole, parseMoney } from '@/lib/format';
 import { duplicateFurniture, rotateFurniture } from '@/features/furniture/actions';
 import { TopView } from '@/features/furniture/TopView';
 import { MOD } from '@/lib/platform';
 import { usePlanStore } from '@/state/planStore';
 import { useUiStore } from '@/state/uiStore';
+
+const PRICE_OPTIONS: readonly SegmentOption<'estimated' | 'own'>[] = [
+  { value: 'estimated', label: 'Estimated' },
+  { value: 'own', label: 'My price' },
+];
 
 const DIM_LABELS = { width: 'Width', depth: 'Depth', height: 'Height' } as const;
 
@@ -44,6 +52,7 @@ export function FurnitureInspector({
 }) {
   const execute = usePlanStore((s) => s.execute);
   const select = useUiStore((s) => s.select);
+  const overrides = usePlanStore((s) => s.project.costOverrides);
   const [lockRatio, setLockRatio] = useState(true);
   const base = FURNITURE_BY_ID.get(item.modelId);
   const model = modelFor(item);
@@ -51,7 +60,10 @@ export function FurnitureInspector({
   const quarter = Math.PI / 2;
   const size: FurnitureSize = item.size ?? base;
   const palette = furniturePalette(base);
-  const price = Math.round(base.price * sizeFactor(item));
+  const catalogue = overrides[furnitureMaterialId(base.id)] ?? base.price;
+  const estimated = Math.round(catalogue * sizeFactor(item));
+  const own = item.price;
+  const price = own ?? estimated;
 
   /** Applies a size (null = catalogue size); refuses sizes that hit a wall. */
   const commitSize = (next: FurnitureSize | null): boolean => {
@@ -100,7 +112,9 @@ export function FurnitureInspector({
           <p className="tabular text-accent-gradient text-sm font-semibold">
             {formatMoneyWhole(price)}
           </p>
-          <p className="text-[11px] text-fg-subtle">if added</p>
+          <p className="text-[11px] text-fg-subtle">
+            {own === undefined ? 'estimated' : 'your price'}
+          </p>
         </div>
       </div>
       <PanelSection
@@ -172,6 +186,46 @@ export function FurnitureInspector({
           )}
         </PanelSection>
       )}
+      <PanelSection title="Price" className="border-b-0 pt-0">
+        <SegmentedControl
+          ariaLabel="Furniture price source"
+          value={own === undefined ? 'estimated' : 'own'}
+          className="w-full [&>*]:flex-1"
+          options={PRICE_OPTIONS}
+          onChange={(v) => {
+            execute(setFurnitureProps(plan, item.id, { price: v === 'own' ? estimated : null }));
+          }}
+        />
+        {own === undefined ? (
+          <p className="mt-2 text-[11px] leading-relaxed text-fg-subtle">
+            Typical retail price{item.size ? ', scaled to this size' : ''}:{' '}
+            <span className="tabular font-mono text-fg-muted">{formatMoney(estimated)}</span>.
+            Switch to <span className="font-medium text-fg-muted">My price</span> to enter what
+            you’ll actually pay.
+          </p>
+        ) : (
+          <>
+            <Field label="Your price">
+              <CommitInput
+                label="Your price"
+                mono
+                className="w-28 text-right"
+                display={formatMoney(own)}
+                onCommit={(text) => {
+                  const v = parseMoney(text);
+                  if (v === null) return false;
+                  execute(setFurnitureProps(plan, item.id, { price: v }));
+                  return true;
+                }}
+              />
+            </Field>
+            <p className="mt-1 text-[11px] text-fg-subtle">
+              Estimate was <span className="tabular font-mono">{formatMoney(estimated)}</span> ·
+              enter $0 for furniture you already own.
+            </p>
+          </>
+        )}
+      </PanelSection>
       <PanelSection title="Placement" className="border-b-0 pt-0">
         <Field label="Rotation">
           <CommitInput
