@@ -181,7 +181,7 @@ export function FurnitureModels({
         ) : null;
       })}
       {items
-        .filter((i) => isHot(i.id))
+        .filter((i) => hot.has(i.id))
         .map((item) => {
           const model = FURNITURE_BY_ID.get(item.modelId);
           return model ? (
