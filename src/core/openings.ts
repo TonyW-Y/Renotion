@@ -12,7 +12,7 @@ export const DOOR_STYLES: readonly StyleInfo<DoorStyle>[] = [
   { id: 'panel', name: 'Four panel', materialId: 'door-panel' },
   { id: 'glass', name: 'Glass', materialId: 'door-glass' },
   { id: 'barn', name: 'Sliding barn', materialId: 'door-barn' },
-  { id: 'double', name: 'French double', materialId: 'door-double' },
+  { id: 'double', name: 'French', materialId: 'door-double' },
   { id: 'pet', name: 'Pet door', materialId: 'door-pet' },
 ];
 

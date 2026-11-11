@@ -1,8 +1,9 @@
 import { Fragment } from 'react';
 import { Circle, Group, Line, Rect, Text } from 'react-konva';
-import { angle, add, scale, perp, sub } from '@/core/geometry/vec2';
+import { angle, add, normalize, scale, perp, sub } from '@/core/geometry/vec2';
 import { openingSpan, wallDirection, wallFootprint, wallLength } from '@/core/geometry/walls';
 import type { EndpointJoins } from '@/core/geometry/wallGraph';
+import { openingStyleOf } from '@/core/openings';
 import type { ResolvedRoom } from '@/core/rooms';
 import type { ID, Opening, Vec2, Wall } from '@/core/types';
 import { getMaterial } from '@/core/estimate/defaultCosts';
@@ -311,73 +312,178 @@ export function OpeningCuts({
 
 export function OpeningShape({ opening, wall, view, colors, tint, ghost = false }: OpeningProps) {
   const span = openingSpan(opening, wall);
-  const n = perp(wallDirection(wall));
+  const dir = wallDirection(wall);
+  const n = perp(dir);
   const half = wall.thickness / 2;
   const cut = cutPolygon(opening, wall);
+  const style = openingStyleOf(opening);
   const line = tint ?? colors.fgMuted;
+  const leafColor = tint ?? opening.color ?? colors.fg;
   const sw = Math.max(1, Math.min(1.75, view.s / 60));
+  const at = (u: number, v = 0) => add(add(span.start, scale(dir, u)), scale(n, v));
+  const w = opening.width;
 
   if (opening.type === 'window') {
+    const glass = tint ?? colors.accent2;
+    const frame = tint ?? opening.color ?? line;
+    const g = Math.min(half * 0.35, 0.03);
     return (
       <Group opacity={ghost ? 0.85 : 1}>
         <Line
           points={flat(cut, view)}
           closed
           fill={ghost ? colors.canvas : 'transparent'}
-          stroke={line}
-          strokeWidth={sw}
+          stroke={frame}
+          strokeWidth={opening.color && !tint ? sw * 1.4 : sw}
+        />
+        {style === 'double-hung' || style === 'slider' ? (
+          <>
+            <Line
+              points={flat([at(0, g), at(style === 'slider' ? w * 0.55 : w, g)], view)}
+              stroke={glass}
+              strokeWidth={sw * 1.2}
+            />
+            <Line
+              points={flat([at(style === 'slider' ? w * 0.45 : 0, -g), at(w, -g)], view)}
+              stroke={glass}
+              strokeWidth={sw * 1.2}
+            />
+          </>
+        ) : (
+          <Line
+            points={flat([span.start, span.end], view)}
+            stroke={glass}
+            strokeWidth={style === 'picture' ? sw * 2.4 : sw * 1.5}
+          />
+        )}
+        {style === 'casement' && (
+          <Line
+            points={flat([at(w / 2, -half), at(w / 2, half)], view)}
+            stroke={frame}
+            strokeWidth={sw}
+          />
+        )}
+        {style === 'grid' &&
+          [1 / 3, 2 / 3].map((k) => (
+            <Line
+              key={k}
+              points={flat([at(w * k, -g * 1.5), at(w * k, g * 1.5)], view)}
+              stroke={frame}
+              strokeWidth={sw}
+            />
+          ))}
+        {style === 'bay' && (
+          <Line
+            points={flat(
+              [
+                at(-0.08, -half - 0.12),
+                at(w + 0.08, -half - 0.12),
+                at(w + 0.08, half + 0.12),
+                at(-0.08, half + 0.12),
+              ],
+              view,
+            )}
+            closed
+            stroke={frame}
+            strokeWidth={sw * 0.8}
+            dash={[3, 3]}
+          />
+        )}
+      </Group>
+    );
+  }
+
+  const jambs = (
+    <>
+      <Line points={flat([at(0, half), at(0, -half)], view)} stroke={line} strokeWidth={sw} />
+      <Line points={flat([at(w, half), at(w, -half)], view)} stroke={line} strokeWidth={sw} />
+    </>
+  );
+  const ghostFill = ghost && (
+    <Line points={flat(cut, view)} closed fill={colors.canvas} opacity={0.7} />
+  );
+
+  if (style === 'barn') {
+    // A slab sliding along side A's face, with its travel shown dashed.
+    const v = half + 0.035;
+    return (
+      <Group opacity={ghost ? 0.85 : 1}>
+        {ghostFill}
+        {jambs}
+        <Line
+          points={flat([at(-0.06, v), at(w + 0.06, v)], view)}
+          stroke={leafColor}
+          strokeWidth={sw * 2.2}
+          lineCap="round"
         />
         <Line
-          points={flat([span.start, span.end], view)}
-          stroke={tint ?? colors.accent2}
-          strokeWidth={sw * 1.5}
+          points={flat([at(w + 0.06, v + 0.04), at(w * 2, v + 0.04)], view)}
+          stroke={line}
+          strokeWidth={sw * 0.8}
+          dash={[4, 3]}
+          opacity={0.8}
+        />
+      </Group>
+    );
+  }
+
+  if (style === 'pet') {
+    return (
+      <Group opacity={ghost ? 0.85 : 1}>
+        {ghostFill}
+        {jambs}
+        <Line
+          points={flat([at(0), at(w)], view)}
+          stroke={leafColor}
+          strokeWidth={sw * 2}
+          lineCap="round"
         />
       </Group>
     );
   }
 
   const sign = opening.swing === 'b' ? -1 : 1;
-  const hingeAtEnd = opening.hinge === 'end';
-  const hinge = hingeAtEnd ? span.end : span.start;
-  const other = hingeAtEnd ? span.start : span.end;
   const face = scale(n, sign * half);
-  const hingeFace = add(hinge, face);
-  const otherFace = add(other, face);
-  const leafEnd = add(hingeFace, scale(n, sign * opening.width));
-  const arc = arcPoints(
-    hingeFace,
-    opening.width,
-    angle(sub(leafEnd, hingeFace)),
-    angle(sub(otherFace, hingeFace)),
-  );
+  /** One swinging leaf hinged at `hinge`, closing towards `other`. */
+  const leaf = (hinge: Vec2, other: Vec2, radius: number, key: string) => {
+    const hingeFace = add(hinge, face);
+    const otherFace = add(add(hinge, scale(normalize(sub(other, hinge)), radius)), face);
+    const leafEnd = add(hingeFace, scale(n, sign * radius));
+    const arc = arcPoints(
+      hingeFace,
+      radius,
+      angle(sub(leafEnd, hingeFace)),
+      angle(sub(otherFace, hingeFace)),
+    );
+    return (
+      <Fragment key={key}>
+        <Line
+          points={flat(arc, view)}
+          stroke={line}
+          strokeWidth={sw * 0.8}
+          dash={[4, 3]}
+          opacity={0.8}
+        />
+        <Line
+          points={flat([hingeFace, leafEnd], view)}
+          stroke={style === 'glass' && !tint ? colors.accent2 : leafColor}
+          strokeWidth={sw * 1.6}
+          lineCap="round"
+        />
+      </Fragment>
+    );
+  };
 
+  const hingeAtEnd = opening.hinge === 'end';
   return (
     <Group opacity={ghost ? 0.85 : 1}>
-      {ghost && <Line points={flat(cut, view)} closed fill={colors.canvas} opacity={0.7} />}
-      <Line
-        points={flat(arc, view)}
-        stroke={line}
-        strokeWidth={sw * 0.8}
-        dash={[4, 3]}
-        opacity={0.8}
-      />
-      <Line
-        points={flat([hingeFace, leafEnd], view)}
-        stroke={tint ?? colors.fg}
-        strokeWidth={sw * 1.6}
-        lineCap="round"
-      />
-      {/* Jambs */}
-      <Line
-        points={flat([add(span.start, scale(n, half)), sub(span.start, scale(n, half))], view)}
-        stroke={line}
-        strokeWidth={sw}
-      />
-      <Line
-        points={flat([add(span.end, scale(n, half)), sub(span.end, scale(n, half))], view)}
-        stroke={line}
-        strokeWidth={sw}
-      />
+      {ghostFill}
+      {style === 'double'
+        ? [leaf(span.start, span.end, w / 2, 'l'), leaf(span.end, span.start, w / 2, 'r')]
+        : hingeAtEnd
+          ? leaf(span.end, span.start, w, 'one')
+          : leaf(span.start, span.end, w, 'one')}
+      {jambs}
     </Group>
   );
 }

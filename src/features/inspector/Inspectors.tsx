@@ -17,6 +17,7 @@ import {
   deleteWall,
 } from '@/core/commands';
 import { canPlaceOpening, wallLength } from '@/core/geometry/walls';
+import { MIN_OPENING_SIZE, OPENING_PRESETS, openingStyleOf } from '@/core/openings';
 import { wallSideRooms } from '@/core/estimate/quantities';
 import type { ResolvedRoom } from '@/core/rooms';
 import type { Opening, Plan, Wall } from '@/core/types';
@@ -29,9 +30,12 @@ import {
   PanelSection,
   PropRow,
   SegmentedControl,
+  Tooltip,
   type SegmentOption,
 } from '@/components/ui';
+import { ColorSwatches } from '@/features/materials/ColorSwatches';
 import { FloorPicker, PaintPicker } from '@/features/materials/MaterialPicker';
+import { OpeningDesignPicker } from './OpeningDesignPicker';
 import { cn } from '@/lib/cn';
 import { usePlanStore } from '@/state/planStore';
 import { useUiStore } from '@/state/uiStore';
@@ -236,19 +240,74 @@ export function OpeningInspector({
           onChange={(type) => {
             const next =
               type === 'door'
-                ? { type, sillHeight: 0, height: Math.min(2.03, wall.height) }
-                : { type, sillHeight: 0.9, height: Math.min(1.2, wall.height - 0.9) };
+                ? { type, sillHeight: 0, height: Math.min(2.03, wall.height), style: null }
+                : {
+                    type,
+                    sillHeight: 0.9,
+                    height: Math.min(1.2, wall.height - 0.9),
+                    style: null,
+                  };
             execute(setOpeningProps(plan, opening.id, next));
           }}
         />
       </PanelSection>
+      <PanelSection title="Design" className="border-b-0 pb-0">
+        <OpeningDesignPicker
+          opening={opening}
+          onChange={(style) => {
+            execute(setOpeningProps(plan, opening.id, { style }));
+          }}
+        />
+      </PanelSection>
       <PanelSection title="Dimensions" className="border-b-0">
+        <div className="mb-2 grid grid-cols-4 gap-1.5">
+          {OPENING_PRESETS[opening.type].map((p) => {
+            const next = {
+              ...opening,
+              width: p.width,
+              height: p.height,
+              sillHeight: p.sillHeight ?? opening.sillHeight,
+            };
+            const ok = fits(next);
+            const active =
+              Math.abs(opening.width - p.width) < 0.005 &&
+              Math.abs(opening.height - p.height) < 0.005;
+            return (
+              <Tooltip
+                key={p.name}
+                content={`${formatLength(p.width, units, { decimals: 2 })} × ${formatLength(p.height, units, { decimals: 2 })}${ok ? '' : ' · does not fit here'}`}
+              >
+                <button
+                  type="button"
+                  disabled={!ok}
+                  aria-pressed={active}
+                  onClick={() => {
+                    execute(
+                      setOpeningProps(plan, opening.id, {
+                        width: next.width,
+                        height: next.height,
+                        sillHeight: next.sillHeight,
+                        ...(p.style ? { style: p.style } : {}),
+                      }),
+                    );
+                  }}
+                  className={cn(
+                    'h-7 rounded-lg bg-fg/[0.04] text-[11px] font-medium text-fg-muted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-fg disabled:opacity-35',
+                    active && 'bg-accent-soft text-accent shadow-[inset_0_0_0_1.5px_var(--accent)]',
+                  )}
+                >
+                  {p.name}
+                </button>
+              </Tooltip>
+            );
+          })}
+        </div>
         <Field label="Width">
           <LengthInput
             label="Opening width"
             value={opening.width}
             units={units}
-            min={0.3}
+            min={MIN_OPENING_SIZE}
             onChange={(width) => {
               if (!fits({ ...opening, width })) return false;
               execute(setOpeningProps(plan, opening.id, { width }));
@@ -261,7 +320,7 @@ export function OpeningInspector({
             label="Opening height"
             value={opening.height}
             units={units}
-            min={0.3}
+            min={MIN_OPENING_SIZE}
             onChange={(height) => {
               if (!fits({ ...opening, height })) return false;
               execute(setOpeningProps(plan, opening.id, { height }));
@@ -299,7 +358,17 @@ export function OpeningInspector({
           />
         </Field>
       </PanelSection>
-      {isDoor && (
+      <PanelSection title="Colour" className="border-b-0 pt-0">
+        <ColorSwatches
+          label={isDoor ? 'Door colour' : 'Frame colour'}
+          value={opening.color}
+          original={isDoor ? '#b48a63' : '#f7f6f2'}
+          onChange={(hex) => {
+            execute(setOpeningProps(plan, opening.id, { color: hex }));
+          }}
+        />
+      </PanelSection>
+      {isDoor && openingStyleOf(opening) !== 'barn' && openingStyleOf(opening) !== 'pet' && (
         <PanelSection title="Swing" className="border-b-0 pt-0">
           <div className="grid grid-cols-2 gap-2">
             <Button

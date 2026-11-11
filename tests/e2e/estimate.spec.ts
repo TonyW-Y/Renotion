@@ -43,7 +43,12 @@ test('changing a floor updates the estimate with correct quantities', async ({ p
   // Override the laminate price on the estimate page: 6 × $60 = $360 → $492.60
   await page.getByRole('radio', { name: 'Estimate' }).click();
   await expect(page.getByTestId('estimate-total')).toHaveText('$564.60');
-  await expect(page.getByText('6 boxes').last()).toBeVisible();
+  await expect(
+    page
+      .getByRole('row', { name: /Natural laminate/ })
+      .first()
+      .getByRole('cell', { name: '6 boxes', exact: true }),
+  ).toBeVisible();
   const price = page.getByLabel('Natural laminate unit price');
   await price.click();
   await price.fill('60');

@@ -17,6 +17,7 @@ import {
 } from './finishMaterials';
 import { FurnitureModels } from './FurnitureModels';
 import { highlighted, MATERIALS } from './materials';
+import { openingParts } from './openingDesigns';
 import { wallPieceGeometry } from './wallGeometry';
 
 const CLICK_SLOP_PX = 4;
@@ -162,43 +163,22 @@ const WallMesh = memo(
 function OpeningMesh({ opening, wall }: { opening: Opening; wall: Wall }) {
   const span = openingSpan(opening, wall);
   const a = angle(wallDirection(wall));
-  const w = opening.width;
-  const h = opening.height;
-  const depth = wall.thickness + 0.02;
-  const f = 0.05; // frame size
+  const parts = useMemo(() => openingParts(opening, wall.thickness), [opening, wall.thickness]);
   const centreU = (span.from + span.to) / 2;
-  const base = opening.sillHeight;
-
   return (
     <group position={[wall.start.x, 0, -wall.start.y]} rotation={[0, a, 0]}>
-      <group position={[centreU, base, 0]}>
-        {/* Jambs + head */}
-        <mesh position={[-w / 2 + f / 2, h / 2, 0]} material={MATERIALS.frame} castShadow>
-          <boxGeometry args={[f, h, depth]} />
-        </mesh>
-        <mesh position={[w / 2 - f / 2, h / 2, 0]} material={MATERIALS.frame} castShadow>
-          <boxGeometry args={[f, h, depth]} />
-        </mesh>
-        <mesh position={[0, h - f / 2, 0]} material={MATERIALS.frame} castShadow>
-          <boxGeometry args={[w, f, depth]} />
-        </mesh>
-        {opening.type === 'window' ? (
-          <>
-            <mesh position={[0, f / 2, 0]} material={MATERIALS.frame} castShadow>
-              <boxGeometry args={[w, f, depth]} />
-            </mesh>
-            <mesh position={[0, h / 2, 0]} material={MATERIALS.frame}>
-              <boxGeometry args={[0.03, h - 2 * f, 0.04]} />
-            </mesh>
-            <mesh position={[0, h / 2, 0]} material={MATERIALS.glass}>
-              <boxGeometry args={[w - 2 * f, h - 2 * f, 0.01]} />
-            </mesh>
-          </>
-        ) : (
-          <mesh position={[0, (h - f) / 2, 0]} material={MATERIALS.door} castShadow receiveShadow>
-            <boxGeometry args={[w - 2 * f - 0.006, h - f - 0.01, 0.04]} />
+      <group position={[centreU, opening.sillHeight, 0]}>
+        {parts.map((p, i) => (
+          <mesh
+            key={i}
+            position={p.position}
+            material={p.material}
+            castShadow={p.shadow ?? true}
+            receiveShadow
+          >
+            <boxGeometry args={p.size} />
           </mesh>
-        )}
+        ))}
       </group>
     </group>
   );
