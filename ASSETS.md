@@ -36,7 +36,6 @@ _None yet. Added in Phase 4._
 
 ## HDRIs
 
-_None yet. Added in Phase 2._
-
-| Name | Source URL | License |
-| ---- | ---------- | ------- |
+| Name                                        | File                                                             | Source URL                                                   | License |
+| ------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------ | ------- |
+| Kloofendal 48d Partly Cloudy (Pure Sky), 1K | `public/assets/hdri/kloofendal_48d_partly_cloudy_puresky_1k.hdr` | https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky | CC0     |
