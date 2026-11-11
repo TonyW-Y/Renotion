@@ -12,6 +12,7 @@ import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from '
 import * as THREE from 'three';
 import { canPlaceFurniture } from '@/core/furniture/placement';
 import { snapToGrid } from '@/core/geometry/snapping';
+import { wallEndCuts } from '@/core/geometry/wallEnds';
 import { getDraggingModel, setDraggingModel } from '@/features/furniture/dragState';
 import { FURNITURE_MIME } from '@/features/furniture/FurnitureCatalog';
 import { createId } from '@/lib/id';
@@ -137,7 +138,9 @@ export default function Viewer3D() {
   const setShowCeilings = useUiStore((s) => s.setShowCeilings);
   const theme = useUiStore((s) => s.theme);
   const colors = useThemeColors();
-  const { rooms, joins } = useDerivedPlan(plan);
+  const { rooms } = useDerivedPlan(plan);
+  // Mitred / butted wall ends so no two walls overlap (no corner z-fighting).
+  const cuts = useMemo(() => wallEndCuts(plan.walls), [plan.walls]);
   const locked = usePointerLocked();
 
   const bounds = useMemo(() => boundsOf(plan), [plan]);
@@ -223,7 +226,7 @@ export default function Viewer3D() {
         <PlanModel
           plan={plan}
           rooms={rooms}
-          joins={joins}
+          cuts={cuts}
           ceilings={ceilings}
           accent={colors.accent}
         />

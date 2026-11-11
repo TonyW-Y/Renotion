@@ -3,8 +3,8 @@ import { memo, Suspense, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { angle } from '@/core/geometry/vec2';
 import { wallSegments } from '@/core/geometry/wallSegments';
-import type { EndpointJoins } from '@/core/geometry/wallGraph';
-import { openingSpan, wallDirection } from '@/core/geometry/walls';
+import type { EndCut, WallEndCuts } from '@/core/geometry/wallEnds';
+import { openingSpan, wallDirection, wallLength } from '@/core/geometry/walls';
 import type { ResolvedRoom } from '@/core/rooms';
 import type { Opening, Plan, Wall } from '@/core/types';
 import { useUiStore, type Selection } from '@/state/uiStore';
@@ -17,6 +17,7 @@ import {
 } from './finishMaterials';
 import { FurnitureModels } from './FurnitureModels';
 import { highlighted, MATERIALS } from './materials';
+import { wallPieceGeometry } from './wallGeometry';
 
 const CLICK_SLOP_PX = 4;
 
@@ -77,27 +78,54 @@ const stateOf = (
 interface WallMeshProps {
   wall: Wall;
   openings: readonly Opening[];
-  joins: EndpointJoins | undefined;
+  cuts: WallEndCuts | undefined;
   state: 'none' | 'hover' | 'selected';
   accent: string;
   interactive: boolean;
 }
 
+const sameCut = (a: EndCut | undefined, b: EndCut | undefined) =>
+  a?.a === b?.a && a?.b === b?.b && a?.joined === b?.joined;
+
 const WallMesh = memo(
-  function WallMesh({ wall, openings, joins, state, accent, interactive }: WallMeshProps) {
-    const boxes = useMemo(() => wallSegments(wall, openings, joins), [wall, openings, joins]);
-    // BoxGeometry face order: +x, −x, +y, −y, +z (side B), −z (side A).
+  function WallMesh({ wall, openings, cuts, state, accent, interactive }: WallMeshProps) {
+    const pieces = useMemo(() => {
+      const boxes = wallSegments(wall, openings);
+      const len = wallLength(wall);
+      const last = boxes.length - 1;
+      return boxes.map((b, i) => {
+        const atStart = i === 0 && b.u0 <= 1e-6 && cuts?.start.joined;
+        const atEnd = i === last && b.u1 >= len - 1e-6 && cuts?.end.joined;
+        const geometry = wallPieceGeometry({
+          u0A: atStart ? -cuts.start.a : b.u0,
+          u0B: atStart ? -cuts.start.b : b.u0,
+          u1A: atEnd ? len + cuts.end.a : b.u1,
+          u1B: atEnd ? len + cuts.end.b : b.u1,
+          z0: b.z0,
+          z1: b.z1,
+          thickness: wall.thickness,
+        });
+        return { geometry, hideStart: !!atStart, hideEnd: !!atEnd };
+      });
+    }, [wall, openings, cuts]);
+    useEffect(() => () => pieces.forEach((p) => p.geometry.dispose()), [pieces]);
+
+    // Face order: end, start, top, bottom, side B, side A. Joined end faces are
+    // buried against the neighbouring wall, so they're hidden.
     const mats = useMemo(() => {
       const edge = wallEdgeMaterial(state, accent);
-      return [
+      const sideB = wallFaceMaterial(wall.finishB, state, accent);
+      const sideA = wallFaceMaterial(wall.finishA, state, accent);
+      return pieces.map((p) => [
+        p.hideEnd ? MATERIALS.hidden : edge,
+        p.hideStart ? MATERIALS.hidden : edge,
         edge,
         edge,
-        edge,
-        edge,
-        wallFaceMaterial(wall.finishB, state, accent),
-        wallFaceMaterial(wall.finishA, state, accent),
-      ];
-    }, [wall.finishA, wall.finishB, state, accent]);
+        sideB,
+        sideA,
+      ]);
+    }, [pieces, wall.finishA, wall.finishB, state, accent]);
+
     const a = angle(wallDirection(wall));
     return (
       <group
@@ -105,16 +133,14 @@ const WallMesh = memo(
         rotation={[0, a, 0]}
         {...(interactive ? interactions({ kind: 'wall', id: wall.id }) : {})}
       >
-        {boxes.map((b, i) => (
+        {pieces.map((p, i) => (
           <mesh
             key={i}
-            position={[(b.u0 + b.u1) / 2, (b.z0 + b.z1) / 2, 0]}
-            material={mats}
+            geometry={p.geometry}
+            material={mats[i] ?? MATERIALS.wall}
             castShadow
             receiveShadow
-          >
-            <boxGeometry args={[b.u1 - b.u0, b.z1 - b.z0, wall.thickness]} />
-          </mesh>
+          />
         ))}
       </group>
     );
@@ -125,8 +151,8 @@ const WallMesh = memo(
     a.state === b.state &&
     a.accent === b.accent &&
     a.interactive === b.interactive &&
-    a.joins?.start === b.joins?.start &&
-    a.joins?.end === b.joins?.end &&
+    sameCut(a.cuts?.start, b.cuts?.start) &&
+    sameCut(a.cuts?.end, b.cuts?.end) &&
     a.openings.length === b.openings.length &&
     a.openings.every((o, i) => o === b.openings[i]),
 );
@@ -272,7 +298,7 @@ function RoomCeiling({ room, height }: { room: ResolvedRoom; height: number }) {
 interface PlanModelProps {
   plan: Plan;
   rooms: readonly ResolvedRoom[];
-  joins: Map<string, EndpointJoins>;
+  cuts: Map<string, WallEndCuts>;
   ceilings: boolean;
   accent: string;
   interactive?: boolean;
@@ -282,7 +308,7 @@ interface PlanModelProps {
 export function PlanModel({
   plan,
   rooms,
-  joins,
+  cuts,
   ceilings,
   accent,
   interactive = true,
@@ -304,7 +330,7 @@ export function PlanModel({
           key={w.id}
           wall={w}
           openings={openingsByWall.get(w.id) ?? EMPTY}
-          joins={joins.get(w.id)}
+          cuts={cuts.get(w.id)}
           state={interactive ? stateOf(selection, hover, 'wall', w.id) : 'none'}
           accent={accent}
           interactive={interactive}

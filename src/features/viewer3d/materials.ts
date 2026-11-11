@@ -8,6 +8,8 @@ export const MATERIALS = {
   ceiling: new THREE.MeshStandardMaterial({ color: '#fbfaf7', roughness: 1, side: THREE.BackSide }),
   frame: new THREE.MeshStandardMaterial({ color: '#f7f6f2', roughness: 0.6 }),
   door: new THREE.MeshStandardMaterial({ color: '#b48a63', roughness: 0.65 }),
+  /** For faces buried inside a neighbouring wall (hidden to avoid z-fighting). */
+  hidden: new THREE.MeshBasicMaterial({ visible: false }),
   glass: new THREE.MeshPhysicalMaterial({
     color: '#cfe8ff',
     roughness: 0.05,
