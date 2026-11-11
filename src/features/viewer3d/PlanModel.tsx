@@ -1,5 +1,5 @@
 import type { ThreeEvent } from '@react-three/fiber';
-import { memo, useEffect, useMemo } from 'react';
+import { memo, Suspense, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { angle } from '@/core/geometry/vec2';
 import { wallSegments } from '@/core/geometry/wallSegments';
@@ -8,6 +8,13 @@ import { openingSpan, wallDirection } from '@/core/geometry/walls';
 import type { ResolvedRoom } from '@/core/rooms';
 import type { Opening, Plan, Wall } from '@/core/types';
 import { useUiStore, type Selection } from '@/state/uiStore';
+import { getMaterial } from '@/core/estimate/defaultCosts';
+import {
+  useTexturedFloor,
+  wallEdgeMaterial,
+  wallFaceMaterial,
+  type HighlightState,
+} from './finishMaterials';
 import { highlighted, MATERIALS } from './materials';
 
 const CLICK_SLOP_PX = 4;
@@ -36,7 +43,10 @@ function interactions(target: Selection) {
     onClick: (e: ThreeEvent<MouseEvent>) => {
       if (e.delta > CLICK_SLOP_PX) return; // was an orbit drag
       e.stopPropagation();
-      ui().select(target);
+      // Wall boxes: local +z is side B, −z is side A.
+      const nz = e.face?.normal.z ?? 0;
+      const side = target.kind === 'wall' && Math.abs(nz) > 0.5 ? (nz > 0 ? 'b' : 'a') : undefined;
+      ui().select(side ? { ...target, side } : target);
     },
     onPointerOver: (e: ThreeEvent<PointerEvent>) => {
       e.stopPropagation();
@@ -75,7 +85,18 @@ interface WallMeshProps {
 const WallMesh = memo(
   function WallMesh({ wall, openings, joins, state, accent, interactive }: WallMeshProps) {
     const boxes = useMemo(() => wallSegments(wall, openings, joins), [wall, openings, joins]);
-    const mat = useHighlight(MATERIALS.wall, state, accent);
+    // BoxGeometry face order: +x, −x, +y, −y, +z (side B), −z (side A).
+    const mats = useMemo(() => {
+      const edge = wallEdgeMaterial(state, accent);
+      return [
+        edge,
+        edge,
+        edge,
+        edge,
+        wallFaceMaterial(wall.finishB, state, accent),
+        wallFaceMaterial(wall.finishA, state, accent),
+      ];
+    }, [wall.finishA, wall.finishB, state, accent]);
     const a = angle(wallDirection(wall));
     return (
       <group
@@ -87,7 +108,7 @@ const WallMesh = memo(
           <mesh
             key={i}
             position={[(b.u0 + b.u1) / 2, (b.z0 + b.z1) / 2, 0]}
-            material={mat}
+            material={mats}
             castShadow
             receiveShadow
           >
@@ -163,30 +184,73 @@ function roomGeometry(room: ResolvedRoom) {
   return new THREE.ShapeGeometry(shape);
 }
 
-function RoomFloor({
+interface FloorProps {
+  room: ResolvedRoom;
+  state: HighlightState;
+  accent: string;
+  interactive: boolean;
+}
+
+function FloorMesh({
   room,
-  state,
-  accent,
+  material,
   interactive,
 }: {
   room: ResolvedRoom;
-  state: 'none' | 'hover' | 'selected';
-  accent: string;
+  material: THREE.Material;
   interactive: boolean;
 }) {
   const geo = useMemo(() => roomGeometry(room), [room]);
   useEffect(() => () => geo.dispose(), [geo]);
-  const mat = useHighlight(MATERIALS.floor, state, accent);
   return (
     <mesh
       geometry={geo}
-      material={mat}
+      material={material}
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, 0.002, 0]}
       receiveShadow
       {...(interactive ? interactions({ kind: 'room', id: room.key }) : {})}
     />
   );
+}
+
+function PlainFloor({
+  room,
+  state,
+  accent,
+  interactive,
+  color,
+}: FloorProps & { color?: string | undefined }) {
+  const base = useMemo(
+    () => (color ? new THREE.MeshStandardMaterial({ color, roughness: 0.85 }) : MATERIALS.floor),
+    [color],
+  );
+  const mat = useHighlight(base, state, accent);
+  return <FloorMesh room={room} material={mat} interactive={interactive} />;
+}
+
+function TexturedFloor({
+  room,
+  state,
+  accent,
+  interactive,
+  set,
+  tileSize,
+}: FloorProps & { set: string; tileSize: number }) {
+  const mat = useTexturedFloor(set, tileSize, state, accent);
+  return <FloorMesh room={room} material={mat} interactive={interactive} />;
+}
+
+function RoomFloor(props: FloorProps) {
+  const m = getMaterial(props.room.meta?.floorMaterial);
+  if (m?.textureSet) {
+    return (
+      <Suspense fallback={<PlainFloor {...props} color={m.colorHex} />}>
+        <TexturedFloor {...props} set={m.textureSet} tileSize={m.tileSize ?? 1} />
+      </Suspense>
+    );
+  }
+  return <PlainFloor {...props} color={m?.colorHex} />;
 }
 
 function RoomCeiling({ room, height }: { room: ResolvedRoom; height: number }) {
