@@ -1,6 +1,7 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import { memo, Suspense, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import { ceilingOutline } from '@/core/geometry/ceiling';
 import { angle } from '@/core/geometry/vec2';
 import { wallSegments } from '@/core/geometry/wallSegments';
 import type { EndCut, WallEndCuts } from '@/core/geometry/wallEnds';
@@ -22,8 +23,8 @@ import { openingParts } from './openingDesigns';
 import { wallPieceGeometry } from './wallGeometry';
 
 const CLICK_SLOP_PX = 4;
-/** How far ceilings sit below the wall tops (m). */
-const CEILING_DROP = 0.005;
+/** How far ceilings sit above the wall tops (m). */
+const CEILING_LIFT = 0.005;
 
 function useHighlight(
   base: THREE.MeshStandardMaterial,
@@ -86,13 +87,15 @@ interface WallMeshProps {
   state: 'none' | 'hover' | 'selected';
   accent: string;
   interactive: boolean;
+  /** A ceiling covers this wall's top, so its top face isn't drawn. */
+  capped: boolean;
 }
 
 const sameCut = (a: EndCut | undefined, b: EndCut | undefined) =>
   a?.a === b?.a && a?.b === b?.b && a?.joined === b?.joined;
 
 const WallMesh = memo(
-  function WallMesh({ wall, openings, cuts, state, accent, interactive }: WallMeshProps) {
+  function WallMesh({ wall, openings, cuts, state, accent, interactive, capped }: WallMeshProps) {
     const pieces = useMemo(() => {
       const boxes = wallSegments(wall, openings);
       const len = wallLength(wall);
@@ -109,9 +112,11 @@ const WallMesh = memo(
           z1: b.z1,
           thickness: wall.thickness,
         });
-        return { geometry, hideStart: !!atStart, hideEnd: !!atEnd };
+        // Window sills keep their tops; only full-height tops sit under the ceiling.
+        const hideTop = capped && b.z1 >= wall.height - 1e-6;
+        return { geometry, hideStart: !!atStart, hideEnd: !!atEnd, hideTop };
       });
-    }, [wall, openings, cuts]);
+    }, [wall, openings, cuts, capped]);
     useEffect(() => () => pieces.forEach((p) => p.geometry.dispose()), [pieces]);
 
     // Face order: end, start, top, bottom, side B, side A. Joined end faces are
@@ -123,7 +128,7 @@ const WallMesh = memo(
       return pieces.map((p) => [
         p.hideEnd ? MATERIALS.hidden : edge,
         p.hideStart ? MATERIALS.hidden : edge,
-        edge,
+        p.hideTop ? MATERIALS.hidden : edge,
         edge,
         sideB,
         sideA,
@@ -155,6 +160,7 @@ const WallMesh = memo(
     a.state === b.state &&
     a.accent === b.accent &&
     a.interactive === b.interactive &&
+    a.capped === b.capped &&
     sameCut(a.cuts?.start, b.cuts?.start) &&
     sameCut(a.cuts?.end, b.cuts?.end) &&
     a.openings.length === b.openings.length &&
@@ -224,7 +230,11 @@ function OpeningMesh({
 /* ------------------------------------------------------------------ */
 
 function roomGeometry(room: ResolvedRoom) {
-  const shape = new THREE.Shape(room.polygon.map((p) => new THREE.Vector2(p.x, p.y)));
+  return outlineGeometry(room.polygon);
+}
+
+function outlineGeometry(polygon: readonly { x: number; y: number }[]) {
+  const shape = new THREE.Shape(polygon.map((p) => new THREE.Vector2(p.x, p.y)));
   return new THREE.ShapeGeometry(shape);
 }
 
@@ -301,14 +311,16 @@ function RoomFloor(props: FloorProps) {
 
 function RoomCeiling({
   room,
+  outline,
   height,
   accent,
 }: {
   room: ResolvedRoom;
+  outline: readonly { x: number; y: number }[];
   height: number;
   accent: string;
 }) {
-  const geo = useMemo(() => roomGeometry(room), [room]);
+  const geo = useMemo(() => outlineGeometry(outline), [outline]);
   useEffect(() => () => geo.dispose(), [geo]);
   const material = useSurfaceMaterial(
     room.meta?.ceilingMaterial,
@@ -322,10 +334,11 @@ function RoomCeiling({
       geometry={geo}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]}
-      // Rooms are traced along wall centre lines, so the ceiling's edge runs
-      // under the wall tops; keep it just below them so the two never z-fight.
-      position={[0, height - CEILING_DROP, 0]}
-      receiveShadow
+      // The ceiling covers the wall tops (in its own finish), sitting just
+      // above them so the two surfaces never z-fight.
+      position={[0, height + CEILING_LIFT, 0]}
+      // Wall tops sit just below; receiving their shadow would draw dashed seams.
+      receiveShadow={false}
     />
   );
 }
@@ -358,6 +371,12 @@ export function PlanModel({
     return m;
   }, [plan.openings]);
   const wallsById = useMemo(() => new Map(plan.walls.map((w) => [w.id, w])), [plan.walls]);
+  const roomWalls = useMemo(() => new Set(rooms.flatMap((r) => r.wallIds)), [rooms]);
+  const ceilingOutlines = useMemo(() => {
+    if (!ceilings) return new Map<string, ReturnType<typeof ceilingOutline>>();
+    const polys = rooms.map((r) => r.polygon);
+    return new Map(rooms.map((r) => [r.key, ceilingOutline(r.polygon, polys, plan.walls)]));
+  }, [ceilings, rooms, plan.walls]);
   const EMPTY: Opening[] = useMemo(() => [], []);
 
   return (
@@ -371,6 +390,7 @@ export function PlanModel({
           state={interactive ? stateOf(selection, hover, 'wall', w.id) : 'none'}
           accent={accent}
           interactive={interactive}
+          capped={ceilings && roomWalls.has(w.id)}
         />
       ))}
       {plan.openings.map((o) => {
@@ -399,7 +419,15 @@ export function PlanModel({
       {ceilings &&
         rooms.map((r) => {
           const h = Math.min(...r.wallIds.map((id) => wallsById.get(id)?.height ?? 2.44));
-          return <RoomCeiling key={`c-${r.key}`} room={r} height={h} accent={accent} />;
+          return (
+            <RoomCeiling
+              key={`c-${r.key}`}
+              room={r}
+              outline={ceilingOutlines.get(r.key) ?? r.polygon}
+              height={h}
+              accent={accent}
+            />
+          );
         })}
     </group>
   );
