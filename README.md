@@ -34,7 +34,7 @@ no sign-up needed.
 | 💰 **Estimate**             | Only what _changes_ between the current home and the renovation is priced: paint in gallons, flooring in sq ft or boxes with waste, trim, drywall sheets, doors, windows, ceilings, furniture. Every price can be edited. |
 | 🗓️ **Schedule**             | The changes become an ordered task list (demolition → drywall → paint → floors → furniture) with working-day dates and a Gantt timeline. Track each task's status.                                                        |
 | 📒 **Budget**               | Log what you actually spend and compare it with the estimate, by category. Printable project summary.                                                                                                                     |
-| 🔌 **Local-first**          | Everything saves to IndexedDB as you work. No account, no server, works offline.                                                                                                                                          |
+| ☁️ **Local-first + cloud**  | Works offline with no account (IndexedDB). Sign in to keep projects in PostgreSQL, open them anywhere, and send read-only share links.                                                                                    |
 
 <table>
   <tr>
@@ -61,7 +61,8 @@ flowchart LR
     P["Planned plan<br/>(the renovation)"]
     H["Undo / redo stacks<br/>(inverse commands)"]
   end
-  Store -- "auto-save" --> IDB[("IndexedDB")]
+  Store -- "auto-save<br/>(ProjectRepository)" --> IDB[("IndexedDB<br/>guest / offline")]
+  Store -- "auto-save, revision-checked" --> PG[("PostgreSQL (Supabase)<br/>RLS on every table")]
   Store --> Derive
   subgraph Derive["src/core (pure TypeScript)"]
     direction TB
@@ -84,8 +85,9 @@ flowchart LR
 - **Two plans, one diff.** The project stores the home _as it is_ and _as planned_. Costs and tasks
   come from `diffPlans`, a typed list of change events (`floorChanged`, `wallRemoved`,
   `openingAdded`, `furnitureAdded`, …).
-- **Local-first persistence** behind a `ProjectRepository` interface (IndexedDB today), so a cloud
-  backend can be added without touching the editor.
+- **Local-first, cloud when signed in.** Both stores implement one `ProjectRepository` interface,
+  so the editor never knows where a project lives. Guests and the demo stay in IndexedDB; signed-in
+  users save to PostgreSQL.
 
 ## Interesting problems solved
 
@@ -110,34 +112,49 @@ flowchart LR
   rig, keeping every wall face within a few percent of the colour you picked.
 - **Collision.** Furniture uses separating-axis tests against wall footprints; walk mode slides
   along walls and passes through doorways.
+- **Security in the database, not the client.** Every table has Row Level Security: members read,
+  owners and editors write, only owners delete or manage members; helper functions live in a private
+  schema and nothing is exposed to the API unless granted. Share links work through a
+  `SECURITY DEFINER` function that only accepts a valid, unrevoked token. A test suite signs in real
+  users against a local Postgres and proves a stranger cannot read or change someone else's project.
+- **Concurrent edits.** A project is saved by one SQL function in a single transaction, guarded by
+  a `revision` (optimistic concurrency). If another tab or device saved first, the database rejects
+  the write (`SQLSTATE 40001`) and the app reloads the latest version with a notice. Saves are queued
+  so a user's own rapid edits never conflict.
 
 ## Tech stack and why
 
-| Choice                             | Why                                                                                                                                                       |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **React 19 + TypeScript (strict)** | `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, no `any`. Commands and change events are discriminated unions the compiler checks exhaustively. |
-| **Vite 8**                         | Fast dev server; the 3D view is a lazy-loaded chunk so the editor opens quickly.                                                                          |
-| **React Three Fiber + drei**       | Declarative Three.js that re-renders from plan data; instancing keeps 50 kinds of furniture cheap.                                                        |
-| **react-konva**                    | A fast 2D canvas with hit testing, composite operations and pattern fills.                                                                                |
-| **Zustand**                        | Small, unopinionated store; easy to keep undo history next to the plan.                                                                                   |
-| **Tailwind CSS 4**                 | Design tokens as CSS variables, with full light and dark themes.                                                                                          |
-| **IndexedDB (idb-keyval)**         | Local-first saving with zero setup and no backend cost.                                                                                                   |
-| **Vitest + Playwright**            | Fast unit tests for the core, real-browser tests for the flows (with software WebGL in CI).                                                               |
-| **Docker + GitHub Actions**        | Reproducible production image and CI that tests the image itself.                                                                                         |
+| Choice                             | Why                                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **React 19 + TypeScript (strict)** | `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, no `any`. Commands and change events are discriminated unions the compiler checks exhaustively.           |
+| **Vite 8**                         | Fast dev server; the 3D view is a lazy-loaded chunk so the editor opens quickly.                                                                                    |
+| **React Three Fiber + drei**       | Declarative Three.js that re-renders from plan data; instancing keeps 50 kinds of furniture cheap.                                                                  |
+| **react-konva**                    | A fast 2D canvas with hit testing, composite operations and pattern fills.                                                                                          |
+| **Zustand**                        | Small, unopinionated store; easy to keep undo history next to the plan.                                                                                             |
+| **Tailwind CSS 4**                 | Design tokens as CSS variables, with full light and dark themes.                                                                                                    |
+| **IndexedDB (idb-keyval)**         | Local-first saving with zero setup and no backend cost.                                                                                                             |
+| **PostgreSQL via Supabase**        | Real SQL (schema, constraints, JSONB plans, RLS policies, PL/pgSQL functions) with auth and an API included; free tier, and the whole stack runs locally in Docker. |
+| **Vitest + Playwright**            | Fast unit tests for the core, real-browser tests for the flows (with software WebGL in CI).                                                                         |
+| **Docker + GitHub Actions**        | Reproducible production image and CI that tests the image itself.                                                                                                   |
 
 Everything is free: no paid APIs, and every asset is CC0 (see [ASSETS.md](ASSETS.md)).
 
 ## Testing
 
-- **234 unit tests** (Vitest) for the core: geometry, room detection, mitring, commands and their
+- **239 unit tests** (Vitest) for the core: geometry, room detection, mitring, commands and their
   inverses, diffing, estimates with hand-calculated expected values, tasks and scheduling, the demo
-  project's integrity.
-- **15 end-to-end tests** (Playwright, real Chromium with software WebGL): drawing rooms, doors and
+  project's integrity, and the cloud repository's revision handling.
+- **15 database tests** against a real Postgres (local Supabase in Docker): constraints, the save
+  transaction and its rollback, revision conflicts, and Row Level Security for strangers, viewers,
+  editors, owners and anonymous visitors.
+- **16 end-to-end tests** (Playwright, real Chromium with software WebGL): drawing rooms, doors and
   windows, undo/redo and persistence, 3D selection sync, furniture placement and collision, resizing
-  and recolouring, custom prices, finishes and ceilings, the estimate, schedule and budget, and the demo.
+  and recolouring, custom prices, finishes and ceilings, the estimate, schedule and budget, the demo,
+  and a cloud flow (sign up, save to Postgres, reload, privacy between accounts, share link).
 - **CI** runs lint, typecheck, unit tests and build, then the e2e suite, then builds the Docker image,
   smoke-tests it and runs the whole e2e suite **against the container**, and on `main` publishes it
-  to GitHub Container Registry.
+  to GitHub Container Registry. A database job starts Supabase, runs the RLS suite, builds the app
+  against it and runs the cloud end-to-end test.
 
 ## Running it
 
@@ -154,6 +171,21 @@ npm run dev        # http://localhost:5173
 | `npm run lint` · `npm run typecheck` | ESLint (zero warnings) · `tsc` in strict mode    |
 | `npm test` · `npm run test:e2e`      | Vitest · Playwright                              |
 | `npm run format`                     | Prettier                                         |
+
+### Accounts and cloud projects (optional)
+
+Without configuration the app is fully offline. To enable accounts:
+
+```bash
+npm run db:start      # local Supabase in Docker (Postgres, auth, API) with the migrations applied
+npm run test:db       # schema + Row Level Security tests
+npm run db:types      # regenerate TypeScript types from the schema
+```
+
+Then copy `.env.example` to `.env.local` and fill in a Supabase URL and publishable key (the local
+values are printed by `npx supabase status`). The schema lives in
+[`supabase/migrations`](supabase/migrations); apply it to a hosted project with
+`npx supabase link` and `npx supabase db push`.
 
 ### With Docker
 
@@ -180,8 +212,7 @@ The image is a multi-stage build: Node 22 builds the app, then `nginx-unprivileg
 
 ## What I'd do next
 
-- **Cloud sync and share links** with Supabase (auth, row-level security, read-only links), behind the
-  existing `ProjectRepository` interface.
+- **Inviting collaborators** by email (the `project_members` roles and policies are already in place).
 - **Real-time collaboration** by broadcasting the existing commands (or moving the plan to a CRDT).
 - **glTF furniture** (the catalogue already supports a `gltf` field) and a measuring tool.
 - **Regional price data** and labour estimates.
