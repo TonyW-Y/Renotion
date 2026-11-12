@@ -21,3 +21,26 @@ test('landing → editor → tools respond to shortcuts', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+test('try the demo opens a finished, editable renovation', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Try the demo' }).click();
+  // The ?demo flag is dropped so a refresh keeps the visitor's edits.
+  await expect(page).toHaveURL(/\/editor$/);
+  await expect(page.getByLabel('Project name')).toHaveValue('Demo: open-plan refresh');
+
+  const total = page.getByTestId('estimate-summary-total');
+  await expect(total).not.toHaveText('$0.00');
+
+  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await expect(
+    page.getByTestId('schedule-view').getByText('Kitchen & living').first(),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel('Project name')).toHaveValue('Demo: open-plan refresh');
+  expect(errors).toEqual([]);
+});

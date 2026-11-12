@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { BrickWall, MousePointerClick } from 'lucide-react';
+import { BrickWall, MousePointerClick, Sparkles } from 'lucide-react';
+import { Link } from 'react-router';
 import { Button, Kbd } from '@/components/ui';
 import { useUiStore } from '@/state/uiStore';
 
@@ -60,6 +61,13 @@ export function EmptyState() {
                   W
                 </Kbd>
               </Button>
+              <Link
+                to="/editor?demo"
+                className="pointer-events-auto mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors hover:text-accent"
+              >
+                <Sparkles className="size-3.5" />
+                or explore a finished demo house
+              </Link>
             </>
           )}
         </motion.div>

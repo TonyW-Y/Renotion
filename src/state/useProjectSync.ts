@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { createDemoProject } from '@/core/demo';
+import { createId } from '@/lib/id';
 import { getLastProjectId, getRepository, setLastProjectId } from './persistence';
 import { usePlanStore } from './planStore';
 
@@ -8,12 +10,30 @@ const SAVE_DEBOUNCE_MS = 600;
  * Loads the most recent project on mount (or creates one), then auto-saves
  * every change after a short debounce. Local-first: no network involved.
  */
-export function useProjectSync(projectId?: string): void {
+export function useProjectSync(
+  projectId?: string,
+  /** Load a fresh copy of the demo house instead, then call `onDemoLoaded`. */
+  demo?: { onLoaded: () => void },
+): void {
+  const wantsDemo = demo !== undefined;
+  const onDemoLoaded = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => {
+    onDemoLoaded.current = demo?.onLoaded;
+  });
+
   useEffect(() => {
     let cancelled = false;
     const repo = getRepository();
 
     async function boot() {
+      if (wantsDemo) {
+        const doc = createDemoProject(createId());
+        usePlanStore.getState().loadProject(doc);
+        setLastProjectId(doc.id);
+        await repo.save(doc);
+        onDemoLoaded.current?.();
+        return;
+      }
       const id = projectId ?? getLastProjectId();
       const doc = id ? await repo.load(id) : null;
       if (cancelled) return;
@@ -26,7 +46,7 @@ export function useProjectSync(projectId?: string): void {
       setLastProjectId(usePlanStore.getState().project.id);
     }
 
-    if (projectId !== undefined || !usePlanStore.getState().ready) void boot();
+    if (wantsDemo || projectId !== undefined || !usePlanStore.getState().ready) void boot();
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     const save = async () => {
@@ -61,5 +81,5 @@ export function useProjectSync(projectId?: string): void {
       unsubscribe();
       window.removeEventListener('beforeunload', flush);
     };
-  }, [projectId]);
+  }, [projectId, wantsDemo]);
 }

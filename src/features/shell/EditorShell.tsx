@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { EstimateView } from '@/features/estimate/EstimateView';
 import { FurnitureCatalog } from '@/features/furniture/FurnitureCatalog';
 import { ScheduleView } from '@/features/tasks/ScheduleView';
@@ -14,7 +15,19 @@ import { useEditorShortcuts } from './useEditorShortcuts';
 import { Workspace } from './Workspace';
 
 export function EditorShell() {
-  useProjectSync();
+  // /editor?demo opens a fresh copy of the sample house; the flag is then
+  // dropped from the URL so a refresh keeps the visitor's edits.
+  const [params, setParams] = useSearchParams();
+  useProjectSync(
+    undefined,
+    params.has('demo')
+      ? {
+          onLoaded: () => {
+            setParams({}, { replace: true });
+          },
+        }
+      : undefined,
+  );
   useEditorShortcuts();
   const section = useUiStore((s) => s.section);
 

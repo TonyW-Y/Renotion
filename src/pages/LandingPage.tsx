@@ -1,5 +1,14 @@
 import { motion, stagger, type Variants } from 'motion/react';
-import { ArrowRight, Box, Calculator, CalendarRange, Moon, PenLine, Sun } from 'lucide-react';
+import {
+  ArrowRight,
+  Box,
+  Calculator,
+  CalendarRange,
+  Moon,
+  PenLine,
+  Sparkles,
+  Sun,
+} from 'lucide-react';
 import { Link } from 'react-router';
 import { IsoHouse } from '@/components/brand/IsoHouse';
 import { Wordmark } from '@/components/brand/Logo';
@@ -123,6 +132,10 @@ export default function LandingPage() {
               <Link to="/editor" className={buttonClass('primary', 'lg', 'group')}>
                 Start planning
                 <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
+              <Link to="/editor?demo" className={buttonClass('secondary', 'lg', 'group')}>
+                <Sparkles className="size-4 text-accent" />
+                Try the demo
               </Link>
               <a href="#features" className={buttonClass('ghost', 'lg')}>
                 How it works
