@@ -1,0 +1,16 @@
+# Keep the build context small and free of local state.
+node_modules
+dist
+.git
+.github
+.vscode
+coverage
+playwright-report
+test-results
+blob-report
+*.log
+.DS_Store
+.env*
+Dockerfile
+docker-compose.yml
+.dockerignore
