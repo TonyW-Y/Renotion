@@ -27,12 +27,13 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         <Button
           variant="secondary"
           size="sm"
+          aria-label="Sign in"
           onClick={() => {
             setAuthOpen(true);
           }}
         >
           <LogIn className="size-3.5" />
-          {!compact && 'Sign in'}
+          <span className={compact ? 'hidden lg:inline' : undefined}>Sign in</span>
         </Button>
         <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
       </>
