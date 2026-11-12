@@ -111,3 +111,40 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
+
+  database:
+    name: Database (Postgres · RLS · cloud e2e)
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Start local Supabase (Postgres, auth, API) and apply migrations
+        run: npm run db:start
+
+      - name: Schema, functions and Row Level Security tests
+        run: npm run test:db
+
+      - name: Build the app against the local stack
+        run: |
+          eval "$(npx supabase status -o env)"
+          VITE_SUPABASE_URL="$API_URL" VITE_SUPABASE_PUBLISHABLE_KEY="$PUBLISHABLE_KEY" npm run build
+
+      - name: Cloud end-to-end test (sign-up, save, privacy, share link)
+        run: |
+          npx playwright install --with-deps chromium
+          npx vite preview --port 4173 --strictPort &
+          for _ in $(seq 1 30); do curl -fs http://localhost:4173 >/dev/null && break; sleep 1; done
+          E2E_CLOUD=1 PLAYWRIGHT_BASE_URL=http://localhost:4173 npx playwright test tests/e2e/cloud.spec.ts
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cloud-playwright-report
+          path: playwright-report
+          retention-days: 7
