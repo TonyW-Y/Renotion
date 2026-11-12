@@ -13,7 +13,15 @@
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "eslint.config.js", "tests/e2e"]
+  "include": [
+    "vite.config.ts",
+    "vitest.db.config.ts",
+    "playwright.config.ts",
+    "eslint.config.js",
+    "tests/e2e",
+    "tests/db"
+  ]
 }

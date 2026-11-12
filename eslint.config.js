@@ -5,7 +5,17 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'node_modules'] },
+  {
+    ignores: [
+      'dist',
+      'coverage',
+      'playwright-report',
+      'test-results',
+      'node_modules',
+      // Generated from the database schema (npm run db:types).
+      'src/lib/database.types.ts',
+    ],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
