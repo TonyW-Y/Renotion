@@ -7,6 +7,7 @@
 Draw your home in 2D, see it in 3D instantly, and get material quantities, costs and a task timeline,
 all generated from your plan. Free, no sign-up, runs entirely in your browser.
 
+[![Live demo](https://img.shields.io/badge/demo-live-22c55e?logo=vercel&logoColor=white)](https://renotion-six.vercel.app/)
 [![CI](https://github.com/TonyW-Y/Renotion/actions/workflows/ci.yml/badge.svg)](https://github.com/TonyW-Y/Renotion/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -16,8 +17,9 @@ all generated from your plan. Free, no sign-up, runs entirely in your browser.
 
 <img src="docs/media/hero.gif" alt="Drawing a floor plan, changing the floors and placing a sofa, the 3D model and the estimate updating live" width="880" />
 
-**Try it:** open the app and click **Try the demo**: a furnished sample home with a finished renovation,
-no sign-up needed.
+### [▶ Live demo: renotion-six.vercel.app](https://renotion-six.vercel.app/)
+
+Click **Try the demo** for a furnished sample home with a finished renovation, no sign-up needed.
 
 </div>
 
