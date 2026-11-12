@@ -56,6 +56,17 @@ export function wallEdgeMaterial(state: HighlightState, accent: string) {
   return wallFaceMaterial(undefined, state, accent);
 }
 
+/** Top of a wall: a slightly darker cap so wall outlines read clearly in 3D. */
+export function wallTopMaterial(state: HighlightState, accent: string) {
+  const key = `top|${state}|${accent}`;
+  let m = cache.get(key);
+  if (!m) {
+    m = tinted(MATERIALS.wallTop, state, accent);
+    cache.set(key, m);
+  }
+  return m;
+}
+
 /** A configured copy of a loaded texture (the cached original is left untouched). */
 function prepared(src: THREE.Texture, tileSize: number, srgb: boolean): THREE.Texture {
   return configure(src.clone(), tileSize, srgb);

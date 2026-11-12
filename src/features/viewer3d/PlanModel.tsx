@@ -15,6 +15,7 @@ import {
   useTexturedFloor,
   useWallSideMaterial,
   wallEdgeMaterial,
+  wallTopMaterial,
   type HighlightState,
 } from './finishMaterials';
 import { FurnitureModels } from './FurnitureModels';
@@ -125,10 +126,11 @@ const WallMesh = memo(
     const sideB = useWallSideMaterial(wall.finishB, wall.tintB, state, accent);
     const mats = useMemo(() => {
       const edge = wallEdgeMaterial(state, accent);
+      const top = wallTopMaterial(state, accent);
       return pieces.map((p) => [
         p.hideEnd ? MATERIALS.hidden : edge,
         p.hideStart ? MATERIALS.hidden : edge,
-        p.hideTop ? MATERIALS.hidden : edge,
+        p.hideTop ? MATERIALS.hidden : top,
         edge,
         sideB,
         sideA,

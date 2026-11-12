@@ -215,15 +215,20 @@ export default function Viewer3D() {
         shadows="soft"
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        // No tone mapping: paint and texture colours render as picked (the default
+        // ACES curve darkens and shifts them). Lighting is balanced to stay in range.
+        flat
       >
         <Suspense fallback={null}>
-          <Environment files={HDRI} environmentIntensity={theme === 'dark' ? 0.45 : 0.55} />
+          <Environment files={HDRI} environmentIntensity={0.35} />
         </Suspense>
-        <hemisphereLight args={['#ffffff', '#b9b2a6', theme === 'dark' ? 0.25 : 0.45]} />
+        {/* Same lighting in both UI themes, with a strong even fill and a gentle sun, so
+            every wall face reads as its real paint colour with just a hint of depth. */}
+        <ambientLight intensity={1.6} />
         <directionalLight
           castShadow
           position={[bounds.cx + 8, 14, bounds.cz + 6]}
-          intensity={theme === 'dark' ? 1.15 : 1.45}
+          intensity={0.6}
           shadow-mapSize={[2048, 2048]}
           shadow-bias={-0.0004}
           shadow-normalBias={0.02}
@@ -254,10 +259,10 @@ export default function Viewer3D() {
           infiniteGrid
           cellSize={0.5}
           cellThickness={0.6}
-          cellColor={theme === 'dark' ? '#1d2532' : '#dfe4ec'}
+          cellColor={theme === 'dark' ? '#2a3445' : '#cbd3df'}
           sectionSize={2}
           sectionThickness={1}
-          sectionColor={theme === 'dark' ? '#2a3546' : '#c9d1dd'}
+          sectionColor={theme === 'dark' ? '#3d4c64' : '#a7b3c5'}
           fadeDistance={Math.max(40, bounds.size * 4)}
           fadeStrength={1.5}
         />
