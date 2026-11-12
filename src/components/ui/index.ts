@@ -6,3 +6,4 @@ export { PanelSection, PropRow } from './Panel';
 export { SegmentedControl, type SegmentOption } from './SegmentedControl';
 export { Tooltip, TooltipProvider } from './Tooltip';
 export { CommitInput, Field, LengthInput } from './Field';
+export { Dialog, TextField } from './Dialog';

@@ -11,6 +11,7 @@ import {
 } from '@/core/project';
 import type { Plan } from '@/core/types';
 import { createId } from '@/lib/id';
+import type { ProjectLocation } from './persistence';
 
 const HISTORY_LIMIT = 200;
 
@@ -32,6 +33,8 @@ export interface PlanState {
   history: Record<PlanKind, History>;
   /** False until the project has been loaded from storage. */
   ready: boolean;
+  /** Where the open project is saved. */
+  location: ProjectLocation;
   saveStatus: SaveStatus;
 
   /** Applies a command to the active plan and records it for undo. No-op for null. */
@@ -50,7 +53,7 @@ export interface PlanState {
   updateTask: (key: string, patch: Partial<TaskState>) => void;
   addExpense: (expense: Expense) => void;
   removeExpense: (id: string) => void;
-  loadProject: (doc: ProjectDoc) => void;
+  loadProject: (doc: ProjectDoc, location?: ProjectLocation) => void;
   newProject: () => ProjectDoc;
   setSaveStatus: (status: SaveStatus) => void;
 }
@@ -67,6 +70,7 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
   activeKind: 'baseline',
   history: emptyHistory(),
   ready: false,
+  location: 'local',
   saveStatus: 'idle',
 
   execute: (cmd) => {
@@ -189,9 +193,10 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
     }));
   },
 
-  loadProject: (doc) => {
+  loadProject: (doc, location = 'local') => {
     set({
       project: doc,
+      location,
       activeKind: doc.planned ? 'planned' : 'baseline',
       history: emptyHistory(),
       ready: true,

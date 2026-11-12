@@ -1,11 +1,13 @@
-import { Box, Columns2, Moon, PanelRight, Square, Sun } from 'lucide-react';
+import { Box, Columns2, FolderOpen, Moon, PanelRight, Square, Sun } from 'lucide-react';
 import { Link } from 'react-router';
 import { LogoMark } from '@/components/brand/Logo';
 import { IconButton, SegmentedControl, Tooltip, type SegmentOption } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { usePlanStore } from '@/state/planStore';
 import { useUiStore, type ViewMode } from '@/state/uiStore';
+import { AccountMenu } from '@/features/account/AccountMenu';
 import { PlanVersionSwitch } from './PlanVersionSwitch';
+import { ShareButton } from './ShareButton';
 import { SectionTabs } from './SectionTabs';
 import { UndoRedo } from './UndoRedo';
 import type { UnitSystem } from '@/core/units';
@@ -80,6 +82,15 @@ export function TopBar() {
             <LogoMark />
           </Link>
         </Tooltip>
+        <Tooltip content="All projects">
+          <Link
+            to="/projects"
+            aria-label="All projects"
+            className="hidden rounded-lg p-1.5 text-fg-muted transition-colors hover:bg-fg/[0.06] hover:text-fg sm:block"
+          >
+            <FolderOpen className="size-4" />
+          </Link>
+        </Tooltip>
         <span className="hidden text-fg-subtle/60 select-none sm:inline">/</span>
         <input
           value={projectName}
@@ -127,6 +138,7 @@ export function TopBar() {
           options={UNIT_OPTIONS}
           className="hidden sm:inline-flex"
         />
+        <ShareButton />
         <Tooltip content={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
           <IconButton label="Toggle theme" onClick={toggleTheme}>
             {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
@@ -144,6 +156,7 @@ export function TopBar() {
             </IconButton>
           </Tooltip>
         )}
+        <AccountMenu compact />
       </div>
     </header>
   );

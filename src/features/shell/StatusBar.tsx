@@ -11,8 +11,16 @@ const SAVE_LABEL: Record<SaveStatus, string> = {
   error: 'Save failed',
 };
 
+const CLOUD_LABEL: Record<SaveStatus, string> = {
+  idle: 'Cloud',
+  saving: 'Saving…',
+  saved: 'Saved to cloud',
+  error: 'Save failed',
+};
+
 export function StatusBar() {
   const saveStatus = usePlanStore((s) => s.saveStatus);
+  const location = usePlanStore((s) => s.location);
   const tool = useUiStore((s) => s.tool);
   const cursor = useUiStore((s) => s.cursor);
   const zoom = useUiStore((s) => s.zoom);
@@ -59,7 +67,9 @@ export function StatusBar() {
                   : 'bg-success',
             )}
           />
-          <span data-testid="save-status">{SAVE_LABEL[saveStatus]}</span>
+          <span data-testid="save-status">
+            {location === 'cloud' ? CLOUD_LABEL[saveStatus] : SAVE_LABEL[saveStatus]}
+          </span>
         </span>
       </div>
     </footer>

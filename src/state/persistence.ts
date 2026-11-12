@@ -89,17 +89,32 @@ export function setRepository(next: ProjectRepository): void {
 
 const LAST_PROJECT_KEY = 'renotion:lastProject';
 
-export function getLastProjectId(): string | null {
+/** Where a project lives: this browser (IndexedDB) or the user's cloud account. */
+export type ProjectLocation = 'local' | 'cloud';
+
+export interface ProjectRef {
+  id: string;
+  location: ProjectLocation;
+}
+
+/** The project to reopen next time (older versions stored just a local id). */
+export function getLastProject(): ProjectRef | null {
   try {
-    return localStorage.getItem(LAST_PROJECT_KEY);
+    const raw = localStorage.getItem(LAST_PROJECT_KEY);
+    if (!raw) return null;
+    if (!raw.startsWith('{')) return { id: raw, location: 'local' };
+    const v = JSON.parse(raw) as Partial<ProjectRef>;
+    return typeof v.id === 'string' && (v.location === 'local' || v.location === 'cloud')
+      ? { id: v.id, location: v.location }
+      : null;
   } catch {
     return null;
   }
 }
 
-export function setLastProjectId(id: string): void {
+export function setLastProject(ref: ProjectRef): void {
   try {
-    localStorage.setItem(LAST_PROJECT_KEY, id);
+    localStorage.setItem(LAST_PROJECT_KEY, JSON.stringify(ref));
   } catch {
     /* storage unavailable */
   }
