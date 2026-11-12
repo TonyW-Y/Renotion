@@ -140,6 +140,11 @@ export function buildEstimate(
       case 'floorChanged': {
         const m = getMaterial(e.to);
         if (!m) break;
+        // A painted (solid colour) floor is just paint: no boxes, no baseboard.
+        if (m.category === 'paint') {
+          pool(paint, e.roomKey, e.roomName, m, e.area);
+          break;
+        }
         const q = flooringQuantity(e.area, m);
         push(
           {

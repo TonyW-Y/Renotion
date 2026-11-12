@@ -21,7 +21,7 @@ import { MIN_OPENING_SIZE, OPENING_PRESETS, openingStyleOf } from '@/core/openin
 import { getMaterial } from '@/core/estimate/defaultCosts';
 import { wallSideRooms } from '@/core/estimate/quantities';
 import type { ResolvedRoom } from '@/core/rooms';
-import type { Opening, Plan, Wall } from '@/core/types';
+import type { Opening, Plan, RoomMeta, Wall } from '@/core/types';
 import { formatArea, formatLength, type UnitSystem } from '@/core/units';
 import {
   Button,
@@ -564,6 +564,66 @@ function CeilingFinish({ room }: { room: ResolvedRoom }) {
   );
 }
 
+/** Paint (solid colour) or textured floor, with an optional recolour — same tabs as walls. */
+function FloorFinish({ room, meta }: { room: ResolvedRoom; meta: RoomMeta }) {
+  const execute = usePlanStore((s) => s.execute);
+  const current = getMaterial(room.meta?.floorMaterial);
+  const painted = current?.category === 'paint';
+  const [mode, setMode] = useState<'paint' | 'texture'>(painted ? 'paint' : 'texture');
+  const apply = (floorMaterial: string | null, floorTint?: string | null) => {
+    execute(
+      setRoomMeta(room.meta, {
+        ...meta,
+        ...(floorMaterial ? { floorMaterial } : {}),
+        ...(floorMaterial && floorTint ? { floorTint } : {}),
+      }),
+    );
+  };
+  return (
+    <div className="space-y-3">
+      <SegmentedControl
+        ariaLabel="Floor finish type"
+        value={mode}
+        className="w-full [&>*]:flex-1"
+        options={FINISH_MODES}
+        onChange={setMode}
+      />
+      {mode === 'paint' ? (
+        <PaintPicker
+          label="Floor paint"
+          value={painted ? room.meta?.floorMaterial : undefined}
+          onChange={(id) => {
+            apply(id);
+          }}
+        />
+      ) : (
+        <>
+          <FloorPicker
+            value={painted ? undefined : room.meta?.floorMaterial}
+            onChange={(id) => {
+              // A new floor starts in its own colour.
+              apply(id);
+            }}
+          />
+          {current?.textureSet && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-fg-muted">Colour</p>
+              <ColorSwatches
+                label="Floor colour"
+                value={room.meta?.floorTint}
+                original={current.colorHex}
+                onChange={(hex) => {
+                  apply(room.meta?.floorMaterial ?? null, hex);
+                }}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 const SURFACE_OPTIONS: readonly SegmentOption<'floor' | 'ceiling'>[] = [
   { value: 'floor', label: 'Floor' },
   { value: 'ceiling', label: 'Ceiling' },
@@ -573,7 +633,6 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
   const execute = usePlanStore((s) => s.execute);
   const planned = usePlanStore((s) => s.activeKind === 'planned');
   const [surface, setSurface] = useState<'floor' | 'ceiling'>('floor');
-  const floor = getMaterial(room.meta?.floorMaterial);
   const meta = {
     key: room.key,
     name: room.name,
@@ -624,34 +683,7 @@ export function RoomInspector({ room, units }: { room: ResolvedRoom; units: Unit
       </div>
       {surface === 'floor' ? (
         <PanelSection title={planned ? 'New floor' : 'Existing floor'} className="border-b-0">
-          <FloorPicker
-            value={room.meta?.floorMaterial}
-            onChange={(id) => {
-              // A new floor starts in its own colour.
-              execute(setRoomMeta(room.meta, { ...meta, ...(id ? { floorMaterial: id } : {}) }));
-            }}
-          />
-          {floor?.textureSet && (
-            <div className="mt-3 space-y-1.5">
-              <p className="text-xs text-fg-muted">Colour</p>
-              <ColorSwatches
-                label="Floor colour"
-                value={room.meta?.floorTint}
-                original={floor.colorHex}
-                onChange={(hex) => {
-                  execute(
-                    setRoomMeta(room.meta, {
-                      ...meta,
-                      ...(room.meta?.floorMaterial
-                        ? { floorMaterial: room.meta.floorMaterial }
-                        : {}),
-                      ...(hex ? { floorTint: hex } : {}),
-                    }),
-                  );
-                }}
-              />
-            </div>
-          )}
+          <FloorFinish key={room.key} room={room} meta={meta} />
           {!planned && (
             <p className="mt-3 text-[11px] leading-relaxed text-fg-subtle">
               Record what’s there today. Only changes you make after “Start planning” are priced.

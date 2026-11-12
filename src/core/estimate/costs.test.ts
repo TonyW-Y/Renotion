@@ -269,3 +269,24 @@ describe('buildEstimate: ceilings', () => {
     });
   });
 });
+
+describe('buildEstimate: painted floors', () => {
+  it('prices a solid-colour floor as paint, without baseboard', () => {
+    const est = buildEstimate([
+      {
+        type: 'floorChanged',
+        roomKey: 'r1',
+        roomName: 'Garage',
+        from: null,
+        to: 'paint-sage',
+        area: 20,
+        perimeter: 18,
+        doorWidths: [],
+      },
+    ]);
+    // 20 m² × 2 coats / 37 = 1.08 → 2 gallons
+    expect(est.lines).toEqual([
+      expect.objectContaining({ category: 'paint', materialId: 'paint-sage', quantity: 2 }),
+    ]);
+  });
+});
