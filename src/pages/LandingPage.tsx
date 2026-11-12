@@ -10,6 +10,8 @@ import {
   Sun,
 } from 'lucide-react';
 import { Link } from 'react-router';
+import { AccountMenu } from '@/features/account/AccountMenu';
+import { useAuthStore } from '@/state/authStore';
 import { IsoHouse } from '@/components/brand/IsoHouse';
 import { Wordmark } from '@/components/brand/Logo';
 import { buttonClass, IconButton } from '@/components/ui';
@@ -76,6 +78,7 @@ function Chip({
 export default function LandingPage() {
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
+  const user = useAuthStore((s) => s.user);
 
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-bg">
@@ -93,9 +96,15 @@ export default function LandingPage() {
             <IconButton label="Toggle theme" onClick={toggleTheme}>
               {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </IconButton>
+            {user && (
+              <Link to="/projects" className={buttonClass('ghost', 'sm', 'hidden sm:inline-flex')}>
+                My projects
+              </Link>
+            )}
             <Link to="/editor" className={buttonClass('secondary', 'sm')}>
               Open editor
             </Link>
+            <AccountMenu />
           </div>
         </nav>
 
