@@ -25,8 +25,8 @@
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #f87171;
-  --grid-minor: rgb(120 150 200 / 0.06);
-  --grid-major: rgb(120 150 200 / 0.12);
+  --grid-minor: rgb(120 150 200 / 0.11);
+  --grid-major: rgb(120 150 200 / 0.24);
   --canvas: #0c0f13;
   --wall: #c9d2df;
   --room: rgb(79 140 255 / 0.07);
@@ -52,8 +52,8 @@
   --success: #059669;
   --warning: #d97706;
   --danger: #dc2626;
-  --grid-minor: rgb(40 70 130 / 0.06);
-  --grid-major: rgb(40 70 130 / 0.12);
+  --grid-minor: rgb(40 70 130 / 0.12);
+  --grid-major: rgb(40 70 130 / 0.26);
   --canvas: #fafbfc;
   --wall: #253041;
   --room: rgb(47 107 255 / 0.06);
